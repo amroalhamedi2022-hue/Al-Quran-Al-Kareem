@@ -122,3 +122,9 @@ Every subsequent work session updates this file with exact paths, commit/run URL
 - `MainActivity.kt` now fails closed on undecodable/wrong-dimension Quran page and offers retry without generating any alternate Quran content (commit `d6e1d4d`). **Android build after this change not yet independently confirmed**.
 - CI workflow now keeps both independent image audits and includes the per-page review ledger in the technical artifact (`140931c`).
 - **Priority:** obtain two qualified independent 604-page comparison reviews and solve any issues; then pin approved manifest/ship offline Android reader; paper curl and glass remain future development steps after authenticity.
+
+### 2026-11-10 — Pre-release FAIL-CLOSED workflow (no APK published)
+- Added `.github/workflows/pre-release-quran-gate.yml` (commit `60fbd81`), **manual invocation only**. Before even compiling an unsigned release it requires a physically present approved 604-page pack, verifies its independent SHA pin and every file, and enforces offline-only source restrictions.
+- If and only if the authentic pack exists and passes checks, workflow runs Android unit tests + `assembleRelease`, then verifies the **actual unsigned APK's embedded 604 PNG bytes** against the independent approved manifest and inspects merged APK permissions via aapt2. It does not sign, upload, or publish any APK.
+- **As of this entry:** gate is committed but **expected to FAIL** (no human-reviewed pack or pinned approved-manifest hash). The workflow has NOT been claimed passing or run; this protects the user from a misleading scaffold-release success.
+- A separate human signoff and final signed-APK release remains REQUIRED after this technical preflight.
