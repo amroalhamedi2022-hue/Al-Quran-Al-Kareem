@@ -65,3 +65,8 @@ Every subsequent work session updates this file with exact paths, commit/run URL
 **Proof commits:** `c7917c8` (source gate), `a96242d` (8 tests), `0cc07e8` (runner), `93d7cde` (provenance), `2bffc37` (Android pin), `1406322` & `ddc716e` (seal tests), `b0a0ee4` (CI enforcement).
 
 **Next immediately:** inspect GitHub Actions official-source-staging run. If the zip download/checksum succeeds, inspect rendering of sample pages 1,2,3,604, then render 604 and start independent human/page review. If the job fails, preserve error log and repair source endpoint; do not mark source approved. Gradle/Android build and device testing not verified in this session.
+
+### 2026-11-10 — Extended source conversion stage
+- Added `scripts/render_staged_hafs.py` (commit `24b4e27`): re-checks each staged AI SHA and requires a verified source-stage report; exports 604 ordered 1600px PNGs via Inkscape, checks PNG structure/dimensions, records render hashes as **PENDING review**, cleans partial output on failure. NEVER writes `approved_manifest.json`.
+- Updated source-staging workflow (commit `1d417f0`): after official archive SHA, 604 source AI checks and sample render, it attempts **all 604 rendered pages** and uploads explicitly UNAPPROVED review artifact, 3-day retention.
+- This is pipeline CODE only. **No confirmed official 604-file archive download, complete rasterization, independent human review or final APK.** Workflow run results from the new pipeline have not been verified.
