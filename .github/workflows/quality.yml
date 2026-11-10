@@ -33,9 +33,16 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - name: Install Android 36 platform
-        run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      # GitHub runner already provides the Android command-line SDK. The old
+      # setup-android action attempts to install the removed legacy "tools"
+      # package and fails on the November 2026 command-line manager.
+      - name: Install Android 36 platform using preinstalled sdkmanager
+        shell: bash
+        run: |
+          test -n "$ANDROID_HOME"
+          SDKMGR="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMGR"
+          "$SDKMGR" --install 'platforms;android-36' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
