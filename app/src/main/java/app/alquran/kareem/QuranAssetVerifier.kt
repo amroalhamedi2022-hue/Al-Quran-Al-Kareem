@@ -15,6 +15,9 @@ internal object QuranAssetVerifier {
     private const val PREFIX = "quran/"
     private const val MANIFEST = "approved_manifest.json"
     private val SHA256 = Regex("[0-9a-f]{64}")
+    // Deliberately unset until independent page-by-page signoff. It must not be
+    // computed from bundled assets at runtime; separate release review pins it.
+    private const val INDEPENDENTLY_APPROVED_MANIFEST_SHA256 = ""
 
     sealed interface Status {
         data class Approved(val pages: Int) : Status
@@ -23,8 +26,16 @@ internal object QuranAssetVerifier {
 
     suspend fun check(assets: AssetManager): Status = withContext(Dispatchers.IO) {
         try {
-            val raw = assets.open(PREFIX + MANIFEST).bufferedReader(Charsets.UTF_8).use { it.readText() }
-            val metadata = JSONObject(raw)
+            require(SHA256.matches(INDEPENDENTLY_APPROVED_MANIFEST_SHA256)) {
+                "No independent approval manifest hash pinned yet"
+            }
+            val manifestBytes = assets.open(PREFIX + MANIFEST).use { it.readBytes() }
+            val manifestDigest = MessageDigest.getInstance("SHA-256").digest(manifestBytes)
+                .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+            require(manifestDigest == INDEPENDENTLY_APPROVED_MANIFEST_SHA256) {
+                "Mushaf approval manifest integrity mismatch"
+            }
+            val metadata = JSONObject(manifestBytes.toString(Charsets.UTF_8))
             require(metadata.optBoolean("rights_reviewed")) { "Source rights not reviewed" }
             require(metadata.optString("source_name").isNotBlank() && metadata.optString("source_url").isNotBlank()) {
                 "Missing authentic source identification"
