@@ -43,6 +43,20 @@ class Guards(unittest.TestCase):
         (pages/"002.png").write_bytes(b"\x89PNG\r\n\x1a\ntampered")
         with self.assertRaisesRegex(IntegrityError,"Invalid PNG structure"):
             verify_pages(pages,manifest,count=3)
+    def test_co_located_approved_manifest_is_allowed(self):
+        pages, manifest, _ = self._pack()
+        colocated = pages / "approved_manifest.json"
+        colocated.write_bytes(manifest.read_bytes())
+        self.assertIn("3 files verified", verify_pages(pages, colocated, count=3))
+
+    def test_co_located_other_metadata_remains_forbidden(self):
+        pages, manifest, _ = self._pack()
+        colocated = pages / "approved_manifest.json"
+        colocated.write_bytes(manifest.read_bytes())
+        (pages / "unexpected.txt").write_text("not Quran")
+        with self.assertRaisesRegex(IntegrityError, "Unexpected"):
+            verify_pages(pages, colocated, count=3)
+
     def test_page_pack_two_independent_approvers(self):
         pages,manifest,metadata=self._pack()
         metadata["approved_by"]=["same","same"]
