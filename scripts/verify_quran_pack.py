@@ -47,7 +47,9 @@ def verify_pages(assets: Path, manifest: Path, count: int = 604):
         with path.open("rb") as f:
             if f.read(8) != b"\x89PNG\r\n\x1a\n":
                 raise IntegrityError(f"Bad PNG signature {name}")
-        if hashlib.file_digest(path.open("rb"), "sha256").hexdigest() != wanted:
+        with path.open("rb") as stream:
+            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        if digest != wanted:
             raise IntegrityError(f"Hash mismatch {name}")
     if {x.name for x in assets.iterdir()} != names:
         raise IntegrityError("Unexpected or missing pages in directory")
