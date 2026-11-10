@@ -11,7 +11,7 @@ permissions:
 jobs:
   verify-and-preview:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -68,4 +68,22 @@ jobs:
           name: UNAPPROVED-official-Hafs-preview
           path: previews/
           retention-days: 14
+          if-no-files-found: error
+
+      - name: Convert all 604 pages for independent review (UNAPPROVED, NOT APP ASSETS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/render_staged_hafs.py \
+            --stage-dir "$RUNNER_TEMP/hafs-stage" \
+            --out-dir "$GITHUB_WORKSPACE/unapproved-pages" \
+            --width 1600
+          test "$(find unapproved-pages -maxdepth 1 -name '*.png' | wc -l)" -eq 604
+      - name: Upload all 604 UNAPPROVED PNG pages for review (short retention)
+        uses: actions/upload-artifact@v4
+        with:
+          name: UNAPPROVED-Hafs-604-PNG-for-human-review
+          path: unapproved-pages/
+          retention-days: 3
+          compression-level: 6
           if-no-files-found: error
