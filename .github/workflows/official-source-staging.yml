@@ -8,6 +8,8 @@ on:
       - 'scripts/tests/test_official_stage.py'
       - 'scripts/render_staged_hafs.py'
       - 'scripts/validate_png.py'
+      - 'scripts/audit_rendered_pages.py'
+      - 'scripts/tests/test_raster_audit.py'
 permissions:
   contents: read
   issues: write
@@ -106,6 +108,17 @@ jobs:
             --out-dir "$GITHUB_WORKSPACE/unapproved-pages" \
             --width 1600
           test "$(find unapproved-pages -maxdepth 1 -name '*.png' | wc -l)" -eq 604
+      - name: Full pixel-decode and margin audit of all 604 pages (NOT APPROVAL)
+        id: technical_audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install 'Pillow==11.3.0'
+          python -m unittest scripts/tests/test_raster_audit.py -v
+          python scripts/audit_rendered_pages.py \
+            --source "$GITHUB_WORKSPACE/unapproved-pages" \
+            --out "$RUNNER_TEMP/TECHNICAL_AUDIT_ONLY.json"
+          cp "$RUNNER_TEMP/TECHNICAL_AUDIT_ONLY.json" "$GITHUB_WORKSPACE/unapproved-pages/"
       - name: Upload all 604 UNAPPROVED PNG pages for review (short retention)
         uses: actions/upload-artifact@v4
         with:
@@ -124,6 +137,7 @@ jobs:
           SOURCE_STAGE: ${{ steps.stage.outcome }}
           SAMPLE_PREVIEW: ${{ steps.preview.outcome }}
           ALL_604_RENDER: ${{ steps.render_all.outcome }}
+          TECHNICAL_AUDIT: ${{ steps.technical_audit.outcome }}
         run: |
           set -euo pipefail
           {
@@ -135,6 +149,7 @@ jobs:
             echo "- 604 AI originals staging: **$SOURCE_STAGE**"
             echo "- Four page samples: **$SAMPLE_PREVIEW**"
             echo "- All 604 rendered PNG for independent review: **$ALL_604_RENDER**"
+            echo "- Full PNG decode/alpha margin/hash technical audit: **$TECHNICAL_AUDIT**"
             echo
             echo "This is an automated integrity/conversion report ONLY. No scholarly approval or release."
           } > "$RUNNER_TEMP/source-report.md"
