@@ -1,0 +1,23 @@
+# Android/Gradle
+.gradle/
+**/build/
+.idea/
+local.properties
+*.iml
+*.apk
+*.aab
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+*.env
+.env*
+# sensitive Quran source remains outside repository pending approval
+source/quran/
+app/src/main/assets/quran/*.png
+app/src/main/assets/quran/approved_manifest.json
+# python
+__pycache__/
+*.pyc
+.DS_Store
