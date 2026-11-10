@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -104,7 +106,31 @@ private fun Reader(pageCount: Int) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
-                Modifier.weight(1f).fillMaxWidth(),
+                Modifier.weight(1f).fillMaxWidth().pointerInput(page, twoPageSpread) {
+                    var swipeDistance = 0f
+                    detectHorizontalDragGestures(
+                        onDragStart = { swipeDistance = 0f },
+                        onHorizontalDrag = { change, amount ->
+                            swipeDistance += amount
+                            change.consume()
+                        },
+                        onDragEnd = {
+                            when (ReaderGestureRules.classify(swipeDistance, 64.dp.toPx())) {
+                                ReaderGestureRules.Turn.NEXT ->
+                                    if (ReaderPagination.hasNext(page, pageCount, twoPageSpread)) {
+                                        page = ReaderPagination.next(page, pageCount, twoPageSpread)
+                                    }
+                                ReaderGestureRules.Turn.PREVIOUS ->
+                                    if (ReaderPagination.hasPrevious(page, pageCount, twoPageSpread)) {
+                                        page = ReaderPagination.previous(page, pageCount, twoPageSpread)
+                                    }
+                                ReaderGestureRules.Turn.NONE -> Unit
+                            }
+                            swipeDistance = 0f
+                        },
+                        onDragCancel = { swipeDistance = 0f }
+                    )
+                },
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
