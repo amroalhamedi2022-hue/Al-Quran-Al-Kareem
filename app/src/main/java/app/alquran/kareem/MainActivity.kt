@@ -2,7 +2,6 @@ package app.alquran.kareem
 
 import android.content.res.Configuration
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,6 +21,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -42,8 +42,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,6 +91,10 @@ private fun Reader(pageCount: Int) {
     )
     val positionStore = remember(context) { ReaderPositionStore(context) }
     val bookmarkStore = remember(context) { ReaderBookmarkStore(context) }
+    val pageRepository = remember(context) { QuranPageBitmapRepository(context) }
+    DisposableEffect(pageRepository) {
+        onDispose { pageRepository.trim() }
+    }
     var page by rememberSaveable { mutableIntStateOf(positionStore.read(pageCount)) }
     var bookmarks by remember { mutableStateOf(bookmarkStore.read(pageCount)) }
     LaunchedEffect(page, pageCount) {
@@ -107,7 +109,15 @@ private fun Reader(pageCount: Int) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 visible.forEach { number ->
-                    ApprovedPage(number, Modifier.weight(1f).fillMaxSize())
+                    // Each navigation target has a separate Compose identity. Never
+                    // leave the previous page bitmap on screen while new art loads.
+                    key(number) {
+                        ApprovedPage(
+                            number,
+                            pageRepository,
+                            Modifier.weight(1f).fillMaxSize()
+                        )
+                    }
                 }
             }
         }
@@ -135,38 +145,22 @@ private sealed interface PageImageState {
 }
 
 @Composable
-private fun ApprovedPage(number: Int, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
+private fun ApprovedPage(
+    number: Int,
+    repository: QuranPageBitmapRepository,
+    modifier: Modifier = Modifier
+) {
     var retry by remember(number) { mutableIntStateOf(0) }
     val imageState by produceState<PageImageState>(
         initialValue = PageImageState.Loading,
         key1 = number,
-        key2 = retry
+        key2 = retry,
+        key3 = repository
     ) {
-        value = withContext(Dispatchers.IO) {
-            try {
-                val file = "quran/%03d.png".format(java.util.Locale.ROOT, number)
-                val options = BitmapFactory.Options().apply {
-                    inScaled = false
-                    inPreferredConfig = Bitmap.Config.ARGB_8888
-                }
-                val decoded = context.assets.open(file).use {
-                    BitmapFactory.decodeStream(it, null, options)
-                }
-                // Never substitute a placeholder verse or show truncated ink.
-                if (decoded == null) {
-                    PageImageState.Failed
-                } else if (decoded.width != 1600 || decoded.height != 2287) {
-                    decoded.recycle()
-                    PageImageState.Failed
-                } else {
-                    PageImageState.Ready(decoded)
-                }
-            } catch (_: Exception) {
-                // Reading may fail on damaged/undecodable pages; fail closed, never fabricate text.
-                PageImageState.Failed
-            }
-        }
+        // Immutable original PNG bitmap only. On failure show an error state,
+        // not a stale page nor fabricated replacement text.
+        value = repository.load(number)?.let { PageImageState.Ready(it) }
+            ?: PageImageState.Failed
     }
     // Original official artwork has transparent pixels: a solid paper backing is required.
     Box(modifier.padding(3.dp).background(Color.White), contentAlignment = Alignment.Center) {
