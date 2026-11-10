@@ -8,6 +8,11 @@ King Fahd Glorious Quran Printing Complex (KFGQPC), Al-Madinah Al-Munawwarah.
 - Official vector-Mushaf site: https://dm.qurancomplex.gov.sa/
 - Source archive (Hafs, Madinah 604-page edition, AI vector format): https://dm.qurancomplex.gov.sa/Download/1441-AI-hafs.zip
 - Alternate location of identical source archive (ONLY if SHA-256 matches): https://archive.org/download/MushafMadinaHafsGreen1441/1441-AI-hafs.zip
+- Documented byte-identical archive mirror (third fallback, publisher hash REQUIRED): https://cdn.quran.ws/KFGQPC/resources/dm/1441-ai-hafs/1441-AI-hafs.zip
+- Mirroring project's provenance: https://github.com/quran-ws/kfgqpc-resources/blob/main/resources/dm/1441-ai-hafs/metadata.json
+- Published archive size in mirror metadata: **466,430,736 bytes**, with 604 archived vector page entries. The mirror is **not** an official KFGQPC site; authenticity is assessed by verifying exactly the independent publisher SHA-256.
+- GitHub Actions follow-up record: https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/issues/8 ; on future pipeline runs the job publishes actual step outcomes there when it completes or fails (not a claim that a run has passed).
+
 - **Publisher's official SHA-256:** `280C5D71CA16AAEEB3A343BE1B92C76FA6DF71D0671E202C026FDE12402D9EEF`.
 - Publisher's usage terms: https://dm.qurancomplex.gov.sa/rights/ — free use includes software and digital publishing, including outside Saudi Arabia, with additional commercial print restrictions.
 
