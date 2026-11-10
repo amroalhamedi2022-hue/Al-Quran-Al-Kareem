@@ -19,18 +19,38 @@ jobs:
           python-version: '3.12'
       - name: Test source archive gate with synthetic non-Quran fixtures
         run: python -m unittest scripts/tests/test_official_stage.py -v
-      - name: Download OFFICIAL Hafs AI archive (verified mirror only as fallback)
+      - name: Download official Hafs AI archive with three integrity-checked sources
         shell: bash
         run: |
           set -euo pipefail
           archive="$RUNNER_TEMP/official-hafs.zip"
-          if ! curl --fail --location --retry 2 --retry-delay 6 --connect-timeout 25 --max-time 1800 \
-            'https://dm.qurancomplex.gov.sa/Download/1441-AI-hafs.zip' --output "$archive"; then
-            echo "::warning::Primary publisher host failed; attempting archival mirror, same mandatory official SHA."
-            curl --fail --location --retry 2 --retry-delay 6 --connect-timeout 25 --max-time 1800 \
-              'https://archive.org/download/MushafMadinaHafsGreen1441/1441-AI-hafs.zip' --output "$archive"
+          expected='280c5d71ca16aaeeb3a343be1b92c76fa6df71d0671e202c026fde12402d9eef'
+          expected_size=466430736
+          urls=(
+            'https://dm.qurancomplex.gov.sa/Download/1441-AI-hafs.zip'
+            'https://archive.org/download/MushafMadinaHafsGreen1441/1441-AI-hafs.zip'
+            'https://cdn.quran.ws/KFGQPC/resources/dm/1441-ai-hafs/1441-AI-hafs.zip'
+          )
+          verified=0
+          for url in "${urls[@]}"; do
+            echo "Trying source: $url"
+            if curl --fail --location --retry 2 --retry-delay 6 --connect-timeout 25 --max-time 1800 --output "$archive" "$url"; then
+              actual_size="$(stat -c%s "$archive")"
+              if [ "$actual_size" -eq "$expected_size" ] && echo "$expected  $archive" | sha256sum --check -; then
+                verified=1
+                echo "Official publisher hash VERIFIED for $url"
+                break
+              fi
+              echo "::warning::Downloaded source has wrong size or hash, trying another source."
+            else
+              echo "::warning::Download failed from source, trying another."
+            fi
+            rm -f "$archive"
+          done
+          if [ "$verified" -ne 1 ]; then
+            echo "::error::No download matched the original publisher's pinned SHA256 and size"
+            exit 1
           fi
-          printf '%s  %s\n' '280c5d71ca16aaeeb3a343be1b92c76fa6df71d0671e202c026fde12402d9eef' "$archive" | sha256sum --check -
       - name: Stage 604 original AI pages (never release or certify)
         shell: bash
         run: |
