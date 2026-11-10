@@ -6,8 +6,11 @@ on:
       - '.github/workflows/official-source-staging.yml'
       - 'scripts/stage_official_hafs.py'
       - 'scripts/tests/test_official_stage.py'
+      - 'scripts/render_staged_hafs.py'
+      - 'scripts/validate_png.py'
 permissions:
   contents: read
+  issues: write
 jobs:
   verify-and-preview:
     runs-on: ubuntu-latest
@@ -20,6 +23,7 @@ jobs:
       - name: Test source archive gate with synthetic non-Quran fixtures
         run: python -m unittest scripts/tests/test_official_stage.py -v
       - name: Download official Hafs AI archive with three integrity-checked sources
+        id: download
         shell: bash
         run: |
           set -euo pipefail
@@ -52,6 +56,7 @@ jobs:
             exit 1
           fi
       - name: Stage 604 original AI pages (never release or certify)
+        id: stage
         shell: bash
         run: |
           set -euo pipefail
@@ -65,6 +70,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y inkscape
       - name: Render 4 sample PNGs for human approval (NOT Quran release)
+        id: preview
         shell: bash
         run: |
           set -euo pipefail
@@ -91,6 +97,7 @@ jobs:
           if-no-files-found: error
 
       - name: Convert all 604 pages for independent review (UNAPPROVED, NOT APP ASSETS)
+        id: render_all
         shell: bash
         run: |
           set -euo pipefail
@@ -107,3 +114,28 @@ jobs:
           retention-days: 3
           compression-level: 6
           if-no-files-found: error
+
+      - name: Publish machine-verifiable run outcome in source review issue
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_DOWNLOAD: ${{ steps.download.outcome }}
+          SOURCE_STAGE: ${{ steps.stage.outcome }}
+          SAMPLE_PREVIEW: ${{ steps.preview.outcome }}
+          ALL_604_RENDER: ${{ steps.render_all.outcome }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### Official Hafs source pipeline result"
+            echo
+            echo "- GitHub Actions: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Official-source byte-for-byte download: **$SOURCE_DOWNLOAD**"
+            echo "- 604 AI originals staging: **$SOURCE_STAGE**"
+            echo "- Four page samples: **$SAMPLE_PREVIEW**"
+            echo "- All 604 rendered PNG for independent review: **$ALL_604_RENDER**"
+            echo
+            echo "This is an automated integrity/conversion report ONLY. No scholarly approval or release."
+          } > "$RUNNER_TEMP/source-report.md"
+          gh issue comment 8 --repo "${{ github.repository }}" --body-file "$RUNNER_TEMP/source-report.md"
