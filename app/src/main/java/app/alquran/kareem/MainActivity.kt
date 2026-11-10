@@ -127,46 +127,65 @@ private fun Reader(pageCount: Int) {
     }
 }
 
+private sealed interface PageImageState {
+    data object Loading : PageImageState
+    data class Ready(val bitmap: Bitmap) : PageImageState
+    data object Failed : PageImageState
+}
+
 @Composable
 private fun ApprovedPage(number: Int, modifier: Modifier = Modifier) {
-    val assets = LocalContext.current.assets
-    // The composition slot is recreated on every page change: never briefly
-    // display the previous Quran page with the new page number.
-    key(number) {
-        val state by produceState<Pair<Bitmap?, Boolean>>(
-            initialValue = Pair(null, false), number, assets
-        ) {
-            value = withContext(Dispatchers.IO) {
-                try {
-                    val decoded = assets.open(
-                        "quran/%03d.png".format(java.util.Locale.ROOT, number)
-                    ).use { stream -> BitmapFactory.decodeStream(stream) }
-                    if (decoded == null) Pair(null, true) else Pair(decoded, false)
-                } catch (_: Exception) {
-                    // An invalid page must never be silently replaced by another.
-                    Pair(null, true)
+    val context = LocalContext.current
+    var retry by remember(number) { mutableIntStateOf(0) }
+    val imageState by produceState<PageImageState>(
+        initialValue = PageImageState.Loading,
+        key1 = number,
+        key2 = retry
+    ) {
+        value = withContext(Dispatchers.IO) {
+            try {
+                val file = "quran/%03d.png".format(java.util.Locale.ROOT, number)
+                val options = BitmapFactory.Options().apply {
+                    inScaled = false
+                    inPreferredConfig = Bitmap.Config.ARGB_8888
                 }
+                val decoded = context.assets.open(file).use {
+                    BitmapFactory.decodeStream(it, null, options)
+                }
+                // Never substitute a placeholder verse or show truncated ink.
+                if (decoded == null) {
+                    PageImageState.Failed
+                } else if (decoded.width != 1600 || decoded.height != 2287) {
+                    decoded.recycle()
+                    PageImageState.Failed
+                } else {
+                    PageImageState.Ready(decoded)
+                }
+            } catch (_: Exception) {
+                // Reading may fail on damaged/undecodable pages; fail closed, never fabricate text.
+                PageImageState.Failed
             }
         }
-        Box(
-            modifier = modifier.padding(3.dp).background(Color.White),
-            contentAlignment = Alignment.Center
-        ) {
-            when {
-                state.second -> Text(
-                    text = "تعذّر عرض الصفحة $number من المصحف.",
-                    color = Color.Black,
+    }
+    Box(modifier.padding(3.dp), contentAlignment = Alignment.Center) {
+        when (val image = imageState) {
+            is PageImageState.Loading -> CircularProgressIndicator()
+            is PageImageState.Ready -> Image(
+                bitmap = image.bitmap.asImageBitmap(),
+                contentDescription = "صفحة $number من المصحف",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+            is PageImageState.Failed -> Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(20.dp)
+            ) {
+                Text(
+                    text = "تعذر عرض صفحة المصحف رقم $number. لن يُعرض نص بديل.",
                     textAlign = TextAlign.Center
                 )
-                state.first == null -> CircularProgressIndicator()
-                else -> state.first?.let { bitmap ->
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "صفحة $number من المصحف",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
-                }
+                Button(onClick = { retry += 1 }) { Text("إعادة المحاولة") }
             }
         }
     }
