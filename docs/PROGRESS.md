@@ -29,10 +29,11 @@
 - Pull request #7 (compatibility/offline verifier improvements) merged into main: https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/pull/7 ; merge commit `c7a84f1ee0bce6ee93a46add7b07212387e54292`.
 
 ## Outstanding highest priority
-1. **Source stage DONE technically:** publisher SHA matched and all 604 pages rendered; next: independent human page-by-page comparison with original, review all flagged differences, and collect two signed records.
-2. Keep original 604 PNG exports immutable during review; operate offline gallery from `scripts/make_review_gallery.py`, archive reviewer notes; after real signoff only, freeze approved manifest.
-3. Bundle audited pages; perform true offline 604-page reader tests on Android and tablet.
-4. Only after that: verified ayah-reveal map, paper curling, liquid glass, reader utilities and signed release.
+1. Two independent human page-by-page comparisons of ALL 604 PNGs to original official artwork, documenting any glyph, harakah, waqf, color, margin, renderer-font or crop differences; do not self-certify from checksum tests. Use the 604-row PENDING ledger.
+2. Repair conversion if any reviewed discrepancy is found, then re-run full render audit and visual signoff. Pin independent approved manifest only **after** all human reviews and explicit provenance acceptance.
+3. Bundle independently approved PNG pages into Android and confirm offline reader on real phone/tablet; test all pages and failure/recovery states.
+4. Only then complete and measure self-reveal, paper curl, Liquid Glass, bookmarks, metadata, final signed release.
+5. Check fresh CI results after latest commits before claiming Android build/test success.
 
 ## Invariant scope (never broaden silently)
 Application title **القرآن الكريم**. Quran text never edited, retyped, corrected by AI or OCR. Offline-only. No recitation audio, no smart memory review, no similar-verses module, no teacher portal. Word interpretation on tap deferred post-v1, NOT implemented.
@@ -102,3 +103,13 @@ Every subsequent work session updates this file with exact paths, commit/run URL
 - Evidence: [public review issue #8](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/issues/8), commits `58997ddd`, `4017253b`, `d630cdf`, `8bf8052`, `ec27d0ff`, `7d9a31db`, `4db4ff0c`, `bc2a946d`.
 - **New CI run for recent audit/gallery changes has not yet been confirmed PASS.** No independent human review signoffs, no pinned approved manifest, and no approved signed app or live-device test.
 - **Next:** independent reviewer workflow on all 604 pages; fix any rendering defects found, then cryptographically pin independent approval and package content into offline Android app. Continue technical P2 improvements safely without bypassing reader gate.
+
+### 2026-11-10 — Source render fully downloaded, technical audit, reader fix and review workflow
+- **Source pipeline VERIFIED SUCCESS:** GitHub Actions [run 42799214618](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/actions/runs/42799214618), job `verify-and-preview` success. Official source zip from archive.org mirrored byte-for-byte against pinned publisher SHA256. All 604 original .ai files extracted and rendered to 604 PNG files.
+- **Download artifact inspected:** `UNAPPROVED-Hafs-604-PNG-for-human-review` ID 13756210989 (ZIP 437,374,353 bytes; **artifact ZIP SHA-256** `27ebef16721cad7fa826220c4d2a4f72e0032ce6a620e414fdcd1d5bb3950432`). ZIP CRC PASS; all 604 PNG SHA-256 hashes MATCH `UNAPPROVED_RENDER_REPORT.json`; no byte-identical duplicate PNGs; all images 1600x2287, RGBA8. In addition, 25 distributed pages had non-empty alpha content with no bounding boxes at edges. No Quranic text correctness claimed.
+- **Public audit evidence:** [Issue #8](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/issues/8), including source-run comment and full-hash technical review comment.
+- **Actual new code:** `scripts/audit_render_archive.py` with **7 synthetic adversarial local tests passing**, commits `1d72340`, `1bd40b7`; CI workflow audit + independent downloadable audit report, commit `ba40282`.
+- **Actual QA process code:** `scripts/make_review_ledger.py` creates **604 PENDING rows** with page hashes; refuses to overwrite annotations or invent approvals. **4 new local unit tests passing**, commits `2a842bc`, `9ad2211`. Workflow creates ledger and publishes with the report, commit `74388c0`. These 11 local unit tests PASS; GitHub CI on latest commits not yet verified.
+- **Release-blocker fixed:** `scripts/verify_quran_pack.py` previously rejected its own co-located `approved_manifest.json` in final APK asset layout. Now permits exactly that one metadata file while rejecting other unknown files; two new regression tests, commits `6f0769d`, `8882c83`.
+- **Reader code fix:** `MainActivity.kt` keys loaded bitmap state by page number, reports decode errors rather than loading forever, and preserves white paper underneath the transparent original artwork; commit `93c4563`. Android build after this modification NOT YET independently verified.
+- **Source review still PENDING:** No signed approvals from two independent reviewers; no approved manifest hash pinned in Android; no authorized release APK. Neither technical audit nor local review ledger counts as religious/scriptural approval.
