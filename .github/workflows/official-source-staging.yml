@@ -135,7 +135,7 @@ jobs:
           archive = Path(os.environ['RUNNER_TEMP']) / 'quran-604-review.zip'
           with ZipFile(archive, 'w', compression=ZIP_STORED, allowZip64=True) as zipped:
               for file in sorted(root.iterdir()):
-                  if file.is_file():
+                  if file.is_file() and (file.name.endswith('.png') or file.name == 'UNAPPROVED_RENDER_REPORT.json'):
                       zipped.write(file, file.name)
           print('Created unapproved review archive:', archive, archive.stat().st_size)
           PY
