@@ -1,0 +1,71 @@
+name: Stage official Hafs Mushaf artwork (UNAPPROVED)
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/official-source-staging.yml'
+      - 'scripts/stage_official_hafs.py'
+      - 'scripts/tests/test_official_stage.py'
+permissions:
+  contents: read
+jobs:
+  verify-and-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test source archive gate with synthetic non-Quran fixtures
+        run: python -m unittest scripts/tests/test_official_stage.py -v
+      - name: Download OFFICIAL Hafs AI archive (verified mirror only as fallback)
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/official-hafs.zip"
+          if ! curl --fail --location --retry 2 --retry-delay 6 --connect-timeout 25 --max-time 1800 \
+            'https://dm.qurancomplex.gov.sa/Download/1441-AI-hafs.zip' --output "$archive"; then
+            echo "::warning::Primary publisher host failed; attempting archival mirror, same mandatory official SHA."
+            curl --fail --location --retry 2 --retry-delay 6 --connect-timeout 25 --max-time 1800 \
+              'https://archive.org/download/MushafMadinaHafsGreen1441/1441-AI-hafs.zip' --output "$archive"
+          fi
+          printf '%s  %s\n' '280c5d71ca16aaeeb3a343be1b92c76fa6df71d0671e202c026fde12402d9eef' "$archive" | sha256sum --check -
+      - name: Stage 604 original AI pages (never release or certify)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/stage_official_hafs.py \
+            --archive "$RUNNER_TEMP/official-hafs.zip" \
+            --out-dir "$RUNNER_TEMP/hafs-stage"
+          mkdir -p previews
+          cp "$RUNNER_TEMP/hafs-stage/SOURCE_STAGE_ONLY.json" previews/SOURCE_STAGE_ONLY.json
+      - name: Install vector renderer for preview only
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y inkscape
+      - name: Render 4 sample PNGs for human approval (NOT Quran release)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for page in 001 002 003 604; do
+            inkscape "$RUNNER_TEMP/hafs-stage/$page.ai" \
+              --export-filename="$GITHUB_WORKSPACE/previews/$page.png" \
+              --export-width=1600
+          done
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0,'scripts')
+          from validate_png import validate_png
+          for p in sorted(Path('previews').glob('*.png')):
+              print(p, validate_png(p))
+          assert len(list(Path('previews').glob('*.png'))) == 4
+          PY
+      - name: Upload only sample previews and source report, explicitly unapproved
+        uses: actions/upload-artifact@v4
+        with:
+          name: UNAPPROVED-official-Hafs-preview
+          path: previews/
+          retention-days: 14
+          if-no-files-found: error
