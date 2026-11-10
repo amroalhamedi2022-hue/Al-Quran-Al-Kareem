@@ -28,7 +28,7 @@ class Guards(unittest.TestCase):
                 return struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", zlib.crc32(kind + payload) & 0xffffffff)
             ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
             pixels = zlib.compress(bytes([0, n, n, n]))
-            data = b"\\x89PNG\\r\\n\\x1a\\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", pixels) + chunk(b"IEND", b"")
+            data = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", pixels) + chunk(b"IEND", b"")
             (pages/file).write_bytes(data)
             rows.append({"page":n,"file":file,"sha256":hashlib.sha256(data).hexdigest()})
         manifest=self.root/"manifest.json"
