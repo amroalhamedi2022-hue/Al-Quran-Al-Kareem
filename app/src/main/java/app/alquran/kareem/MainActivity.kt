@@ -84,10 +84,13 @@ private fun QuranApp() {
 private fun Reader(pageCount: Int) {
     val context = LocalContext.current
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-    var page by rememberSaveable { mutableIntStateOf(1) }
-    val right = if (landscape && page % 2 == 0) page - 1 else page
-    val visible = if (landscape) listOf(right + 1, right).filter { it <= pageCount } else listOf(page)
-    val step = if (landscape) 2 else 1
+    val positionStore = remember(context) { ReaderPositionStore(context) }
+    var page by rememberSaveable { mutableIntStateOf(positionStore.read(pageCount)) }
+    LaunchedEffect(page, pageCount) {
+        positionStore.save(page, pageCount)
+    }
+    val right = ReaderPagination.rightPage(page, pageCount)
+    val visible = ReaderPagination.visible(page, pageCount, landscape)
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
@@ -105,13 +108,16 @@ private fun Reader(pageCount: Int) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(onClick = { page = (page - step).coerceAtLeast(1) }, enabled = page > 1) {
+            Button(
+                onClick = { page = ReaderPagination.previous(page, pageCount, landscape) },
+                enabled = ReaderPagination.hasPrevious(page, pageCount, landscape)
+            ) {
                 Text("السابق")
             }
             Text(if (landscape) "${right}–${(right + 1).coerceAtMost(pageCount)} / $pageCount" else "$page / $pageCount")
             Button(
-                onClick = { page = (page + step).coerceAtMost(pageCount) },
-                enabled = if (landscape) right + 1 < pageCount else page < pageCount
+                onClick = { page = ReaderPagination.next(page, pageCount, landscape) },
+                enabled = ReaderPagination.hasNext(page, pageCount, landscape)
             ) {
                 Text("التالي")
             }
