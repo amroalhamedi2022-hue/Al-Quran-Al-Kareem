@@ -10,7 +10,7 @@
 8. `LocalReadingState` future local-only progress data; no sync, backup needs privacy review.
 
 ### Technical baseline
-Kotlin + Compose, JDK17, AGP 8.13.x / Gradle 8.13 / Kotlin 2.3.21 (verified from upstream sources on 2026-11-10). Compose BOM 2026.09.00. Versions pinned. AGP compileSdk <=36.1.
+Kotlin + Compose, JDK17, AGP 8.13.x / Gradle 8.13 / Kotlin 2.3.21 (verified from upstream sources on 2026-11-10). Compose BOM 2026.04.01 (Compose 1.11, pinned for API36/AGP8.13 compatibility). Versions pinned. AGP compileSdk <=36.1.
 
 ### Dependency rule
 No remote fetches at app runtime (Gradle downloading during **development/build** is distinct from an installed Android application's operation). CI may access dependency repositories to build.
