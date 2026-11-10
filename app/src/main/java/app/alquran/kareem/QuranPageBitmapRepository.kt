@@ -25,9 +25,7 @@ internal class QuranPageBitmapRepository(context: Context) {
         val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         // A 1600x2287 ARGB_8888 bitmap occupies ~14 MiB. Leave most of the heap
         // for UI and Android on low-memory devices; never cache a full Mushaf.
-        (manager.memoryClass.toLong() * 1024L * 1024L / 5L)
-            .coerceIn(16L * 1024 * 1024, 44L * 1024 * 1024)
-            .toInt()
+        QuranPageCachePolicy.budgetBytes(manager.memoryClass)
     }
     private val bitmapCache = object : LruCache<Int, Bitmap>(budgetBytes) {
         override fun sizeOf(key: Int, value: Bitmap): Int = value.byteCount
@@ -56,7 +54,7 @@ internal class QuranPageBitmapRepository(context: Context) {
                 }
             }
             if (decoded == null) return@withLock null
-            if (decoded.width != 1600 || decoded.height != 2287) {
+            if (!QuranPageCachePolicy.acceptsDimensions(decoded.width, decoded.height)) {
                 decoded.recycle()
                 return@withLock null
             }
