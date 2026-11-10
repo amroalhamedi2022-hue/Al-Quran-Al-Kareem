@@ -5,6 +5,7 @@ import hashlib
 import json
 import re
 from pathlib import Path
+from validate_png import validate_png, PngValidationError
 
 class IntegrityError(ValueError):
     pass
@@ -44,9 +45,10 @@ def verify_pages(assets: Path, manifest: Path, count: int = 604):
         path = assets / name
         if not path.is_file() or path.is_symlink():
             raise IntegrityError(f"Missing or symlinked page {name}")
-        with path.open("rb") as f:
-            if f.read(8) != b"\x89PNG\r\n\x1a\n":
-                raise IntegrityError(f"Bad PNG signature {name}")
+        try:
+            validate_png(path)
+        except (PngValidationError, OSError) as exc:
+            raise IntegrityError(f"Invalid PNG structure {name}: {exc}") from exc
         with path.open("rb") as stream:
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
         if digest != wanted:
