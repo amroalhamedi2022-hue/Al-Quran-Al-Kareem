@@ -16,14 +16,14 @@ jobs:
         run: python -m unittest discover -s scripts/tests -v
       - name: Enforce offline source policy
         run: python scripts/verify_offline.py --manifest app/src/main/AndroidManifest.xml --sources app
-      - name: Do not publish an unapproved Quran pack
+      - name: Reject unreviewed Quran pack
         run: |
           if [ -f app/src/main/assets/quran/approved_manifest.json ]; then
             python scripts/verify_quran_pack.py \
               --pages app/src/main/assets/quran \
               --manifest app/src/main/assets/quran/approved_manifest.json
           else
-            echo "PASS (scaffold only): no Quran pack; NO RELEASE allowed."
+            echo "PASS (scaffold only): no approved Quran pack; NO RELEASE allowed."
           fi
   android-compile:
     runs-on: ubuntu-latest
@@ -41,3 +41,13 @@ jobs:
           gradle-version: '8.13'
       - name: Compile debug scaffold (not a verified Quran release)
         run: gradle --no-daemon :app:assembleDebug
+      - name: Check debug APK does not request Internet
+        shell: bash
+        run: |
+          AAPT2="$ANDROID_HOME/build-tools/35.0.0/aapt2"
+          "$AAPT2" dump permissions app/build/outputs/apk/debug/app-debug.apk | tee /tmp/app-permissions.txt
+          if grep -E 'android.permission.(INTERNET|ACCESS_NETWORK_STATE|CHANGE_NETWORK_STATE|ACCESS_WIFI_STATE)' /tmp/app-permissions.txt; then
+            echo "FAILED: network permission found in built APK"
+            exit 1
+          fi
+          echo "PASS: no declared network permissions in debug APK"

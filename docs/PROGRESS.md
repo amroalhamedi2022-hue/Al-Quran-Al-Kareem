@@ -1,31 +1,32 @@
 # LIVE PROGRESS — القرآن الكريم
 
-**Updated 2026-11-10 — GitHub initialization + offline Android scaffold.**
-Status notation: ✅ code committed; 🧪 automated tests run/pending; ⛔ mandatory gate not passed.
+**Updated: 2026-11-10.** Only commits and verified checks count as progress.
 
-| Stage | State | Evidence / outstanding |
+| Stage | Current | Evidence and blocker |
 |---|---|---|
-| P0 Scope and project plan | ✅ committed | README, docs/*.md; official Arabic name locked |
-| P0 Python safety guard tooling | ✅ code committed, 🧪 CI pending | scripts/verify_quran_pack.py, verify_offline.py, 7 fixture tests |
-| P1 Authentic source pack | ⛔ NOT APPROVED | Official KFGQPC page + posted archive SHA found; no original download, 604 page export, hashes, human signoff |
-| P2 Android native offline scaffold | ✅ code committed, 🧪 build pending | app Gradle project, source checks, Compose fail-closed screen; **NOT an approved reader** |
-| P2 Real 604-page reader | ⛔ blocked by P1 | UI code can show verified bitmaps; not tested with actual pages or device |
-| P3 Self-revision verse reveal | ⛔ not started | awaiting reviewed coordinates |
-| P4 Realistic page curl | ⛔ not started | after real reader |
-| P5 Liquid Glass | ⛔ not started | after real reader |
-| P6 Index, bookmarks etc. | ⛔ not started | requires reviewed metadata |
-| P7 Signed APK release | ⛔ not started | no approved content, build, real device QA, or private signing |
+| P0 Plan, locked scope & safety policy | ✅ COMMITTED | README + docs/MASTER_PLAN.md, QURAN_INTEGRITY.md, DECISIONS.md, TESTS |
+| P0 Source guard, offline guard, APK audit tools | ✅ CODE COMMITTED; 🧪 CI results not yet verified | scripts/ verify_quran_pack, verify_offline, verify_upstream_archive, verify_release_apk; 12 synthetic unit tests |
+| P1 Official Quran source archive | ⛔ NOT OBTAINED | KFGQPC upstream source page and published SHA-256 documented; actual archive not retrieved or checked |
+| P1 604 reviewed image files | ⛔ NOT APPROVED | no original assets, no page-by-page comparison or 2-person signoff |
+| P2 Android app scaffold | ✅ COMMITTED, 🧪 BUILD NOT VERIFIED | Gradle Kotlin/Compose project + runtime fail-closed validator |
+| P2 Functional 604-page reader | ⛔ NOT VERIFIED | can display immutable local bitmaps only AFTER pack authenticated; no approved pack yet |
+| P3 Ayah-by-ayah self-reveal | ⛔ NOT STARTED | verified coordinates required |
+| P4 Physical 3D page curl | ⛔ NOT STARTED | source-first dependency |
+| P5 Liquid Glass themes | ⛔ NOT STARTED | source-first dependency |
+| P6 Offline utilities | ⛔ NOT STARTED | requires verified Quran index |
+| P7 Final signed APK + device review | ⛔ NOT STARTED | no accepted pack, verified build or signing |
 
-## Evidence
-- Repo initialization commit: 484a0f9ed341483e5171482abad9a954b6ce18ab.
-- Plan documents commit: 068b6e3516948f0ba61c8614e635b6008d2084b4.
-- Official source reference SHA (not yet locally verified): 280C5D71CA16AAEEB3A343BE1B92C76FA6DF71D0671E202C026FDE12402D9EEF.
-- Test fixtures contain **no Quranic content**. Real Android build/CI still pending at the time of writing.
+### Actual published commits
+- 484a0f9ed341483e5171482abad9a954b6ce18ab — initialize.
+- 068b6e3516948f0ba61c8614e635b6008d2084b4 — master plan & source rules.
+- 9eee5ea4bc1105cdff00932c427c58a24d19b146 — Android scaffold, Python guards, CI.
+- Most recent changes: independent APK page blob audit + official upstream checksum verifier, tests (current commit).
 
-## Next sequence
-1. Verify Android CI, fix all failures and document proof.
-2. Acquire official source safely; validate original archive published SHA.
-3. Export/review all 604 pages with independent approvals, then integrate approved files.
-4. Verify portrait/landscape real pages offline; only then implement visual reveal, page curl and glass.
+### Next priority (unchanged)
+1. Obtain original KFGQPC Hafs vector archive and independently compare to upstream SHA, preserve unchanged.
+2. Convert carefully to all 604 numbered page images; visually review all against source. Track publisher/source rights and reviewer records.
+3. Pin independent reviewed manifest and audit APK assets, then verify 604-page Android reader.
+4. Test display before proceeding to self-reveal, 3D paper curling, Liquid Glass.
 
-No screenshots from simulated/generated Quran pages will be called real-device screenshots.
+### Required evidence not yet available
+No APK build success verified, no official page files, no scholarly page review, no device test. CI pending and not asserted PASS. Tests use invented **non-Quran fixture bytes**, not verses.
