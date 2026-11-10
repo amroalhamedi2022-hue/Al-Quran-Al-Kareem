@@ -41,7 +41,7 @@ class Guards(unittest.TestCase):
         pages,manifest,_=self._pack()
         self.assertIn("3 files verified",verify_pages(pages,manifest,count=3))
         (pages/"002.png").write_bytes(b"\x89PNG\r\n\x1a\ntampered")
-        with self.assertRaisesRegex(IntegrityError,"Hash mismatch"):
+        with self.assertRaisesRegex(IntegrityError,"Invalid PNG structure"):
             verify_pages(pages,manifest,count=3)
     def test_page_pack_two_independent_approvers(self):
         pages,manifest,metadata=self._pack()
