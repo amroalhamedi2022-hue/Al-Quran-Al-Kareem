@@ -9,8 +9,8 @@
 |---|---|---|
 | P0 Locked requirements and all-stage plan | ✅ DOCUMENTED | README, docs/MASTER_PLAN.md, QURAN_INTEGRITY.md, DECISIONS.md, SOURCE_PROVENANCE.md |
 | P0 Automated source and offline checks | ✅ TESTED | GitHub Actions run 42790593497, **12 of 12 Python tests PASSED**; source scan passed |
-| P1 Authentic official Hafs source archive | ⛔ NOT ACQUIRED / NOT VERIFIED | KFGQPC website & upstream published SHA identified; source download not completed; no content approval |
-| P1 All 604 original page images and 2 independent approvals | ⛔ NOT APPROVED | No page pack, independently signed manifest, rendered page review |
+| P1 Authentic official Hafs source archive | ✅ DOWNLOADED & BYTE VERIFIED | GitHub Actions run 42799214618: original archive SHA-256 matched publisher; exactly 604 AI artwork files staged |
+| P1 Rendered 604 PNG images and 2 independent approvals | ✅ RENDERED + TECH CHECK; ⛔ HUMAN APPROVAL PENDING | Artifact 13756210989: 604 RGBA PNGs; 604 hashes matched, pixel visibility/borders checked; NO scholarly signoffs |
 | P2 Android Kotlin/Compose foundation | ✅ IMPLEMENTED and ✅ BUILT | :app:assembleDebug BUILD SUCCESSFUL in CI run 42790593497 |
 | P2 Offline permission check on produced APK | ✅ TESTED | Android aapt2 permissions inspection PASS (no declared network permissions) |
 | P2 Actual complete Quran reading | ⛔ BLOCKED by P1 | Only codepath to render verified pages; no authentic page assets available, intentionally fails closed |
@@ -29,8 +29,8 @@
 - Pull request #7 (compatibility/offline verifier improvements) merged into main: https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/pull/7 ; merge commit `c7a84f1ee0bce6ee93a46add7b07212387e54292`.
 
 ## Outstanding highest priority
-1. Obtain authoritative Hafs/Madinah original vector archive from KFGQPC, preserve original untouched and run scripts/verify_upstream_archive.py against published upstream SHA.
-2. Produce pages 001.png–604.png using a non-editorial, repeatable process; review every exported page plus source layout, and record independent approvals & manifest.
+1. **Source stage DONE technically:** publisher SHA matched and all 604 pages rendered; next: independent human page-by-page comparison with original, review all flagged differences, and collect two signed records.
+2. Keep original 604 PNG exports immutable during review; operate offline gallery from `scripts/make_review_gallery.py`, archive reviewer notes; after real signoff only, freeze approved manifest.
 3. Bundle audited pages; perform true offline 604-page reader tests on Android and tablet.
 4. Only after that: verified ayah-reveal map, paper curling, liquid glass, reader utilities and signed release.
 
@@ -93,3 +93,12 @@ Every subsequent work session updates this file with exact paths, commit/run URL
 - **PASS:** eight RTL portrait/landscape scenarios plus exhaustive constraints for every one of the **604 page positions**: visible spread order, valid bounds, and forward/backward progression.
 - **Scope limitation:** local pure-Kotlin logic only. GitHub JUnit CI, Compose integration, actual Android APK and on-device screenshots have **not** been confirmed in this session; do not equate these.
 - GitHub Action source audit issue [#8](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/issues/8) still had **no machine-posted result comment** when last checked. Do not mark official source as downloaded or approved.
+
+### 2026-11-10 — Real 604-page technical audit + offline human review tooling
+- **Confirmed GitHub Actions RUN SUCCESS:** [42799214618](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/actions/runs/42799214618) downloaded the original Hafs source ZIP and matched published SHA-256, extracted 604 original AI pages, rendered 604 PNGs, and produced review artifacts (artifact ID `13756210989`, 604 PNGs, ~437 MB archive).
+- **Downloaded and independently checked complete artifact locally:** ZIP CRC PASS, 604/604 original PNG file SHA-256 against render report PASS; all 604 fully decoded; all 604 RGBA dimensions 1600×2287; all 604 nontransparent content bounding boxes nonempty and strictly inside image edges. No suspiciously small page bbox. Verified actual image preview on a white viewer for 001, 003 and 604 (background was view-only; PNG bytes untouched).
+- **Added `scripts/audit_rendered_pages.py` + `scripts/tests/test_raster_audit.py`** (8 synthetic tests passed locally), with full-decode technical audit and CI integration; separate `scripts/audit_render_archive.py` from concurrent work validates archive structure & hashes. Corrected workflow to avoid including extra technical JSON in strict ZIP (`8bf8052`).
+- **Added OFFLINE 604-page manual review gallery** `scripts/make_review_gallery.py`, `scripts/tests/test_review_gallery.py`, workflow inclusion and instructions `docs/HUMAN_QURAN_REVIEW_PROTOCOL.md`. Gallery supports full-sized original PNG viewing, previous/next, bookmarks of review progress in browser local storage, per-page flagged notes and standalone JSON export/import. Does NOT automatically approve any page.
+- Evidence: [public review issue #8](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/issues/8), commits `58997ddd`, `4017253b`, `d630cdf`, `8bf8052`, `ec27d0ff`, `7d9a31db`, `4db4ff0c`, `bc2a946d`.
+- **New CI run for recent audit/gallery changes has not yet been confirmed PASS.** No independent human review signoffs, no pinned approved manifest, and no approved signed app or live-device test.
+- **Next:** independent reviewer workflow on all 604 pages; fix any rendering defects found, then cryptographically pin independent approval and package content into offline Android app. Continue technical P2 improvements safely without bypassing reader gate.
