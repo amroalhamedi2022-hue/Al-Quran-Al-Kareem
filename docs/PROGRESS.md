@@ -46,3 +46,22 @@ Every subsequent work session updates this file with exact paths, commit/run URL
 - Integrated PNG validation into `scripts/verify_quran_pack.py`, replaced previous signature-only check. Refreshed existing synthetic fixture generation and corrupt-PNG assertion in `scripts/tests/test_guards.py`.
 - Commits: `3d39866`, `6a8fc57`, `d244e6f`, `298a761`, `975a6a4`.
 - **Still blocked:** original approved 604-page source, independent human signoff, Gradle compile confirmation, final device checks and signed APK. No authentic Quran page was inserted.
+
+## 2026-11-10 — Official Hafs source pipeline and immutable approval seal
+
+| Item | Actual status | Evidence |
+|---|---|---|
+| Public source location and software use rights | ✅ LOCATED, not imported | Official KFGQPC vector Mushaf / rights (see `docs/OFFICIAL_QURAN_SOURCE.md`) |
+| Official archive published SHA256 pinned | ✅ IN CODE | `scripts/stage_official_hafs.py` |
+| Archive staging with SHA256 + ZIP CRC + exact 604 AI pages + traversal/duplicate checks | ✅ COMMITTED; official archive NOT YET RUN | `scripts/stage_official_hafs.py` |
+| Synthetic staging tests | ✅ 8/8 PASS in local equivalent script; GitHub runner status not verified | `scripts/tests/test_official_stage.py` |
+| GitHub Actions download and sample renderer | ✅ WORKFLOW COMMITTED; download/result not verified | `.github/workflows/official-source-staging.yml` |
+| 604 official pages actually downloaded and converted | ⛔ NOT YET | this environment failed to download official zip; cannot claim files exist |
+| Independent approved manifest SHA pin in Android | ✅ FAIL-CLOSED CODE COMMITTED | `QuranAssetVerifier.kt`; blank until human approval |
+| Approval-seal CLI + four synthetic tests | ✅ COMMITTED; full CI status not yet verified | `scripts/verify_approval_seal.py`, `scripts/tests/test_approval_seal.py` |
+| CI enforces seal for any bundled Quran pack | ✅ CONFIG COMMITTED | `.github/workflows/quality.yml` |
+| Human review and signing APK | ⛔ NOT STARTED | gates must remain closed |
+
+**Proof commits:** `c7917c8` (source gate), `a96242d` (8 tests), `0cc07e8` (runner), `93d7cde` (provenance), `2bffc37` (Android pin), `1406322` & `ddc716e` (seal tests), `b0a0ee4` (CI enforcement).
+
+**Next immediately:** inspect GitHub Actions official-source-staging run. If the zip download/checksum succeeds, inspect rendering of sample pages 1,2,3,604, then render 604 and start independent human/page review. If the job fails, preserve error log and repair source endpoint; do not mark source approved. Gradle/Android build and device testing not verified in this session.
