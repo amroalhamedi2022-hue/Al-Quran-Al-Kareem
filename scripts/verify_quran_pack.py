@@ -53,6 +53,12 @@ def verify_pages(assets: Path, manifest: Path, count: int = 604):
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
         if digest != wanted:
             raise IntegrityError(f"Hash mismatch {name}")
+    # The real Android app stores its approved_manifest.json beside the 604 PNGs.
+    # Reject every unrelated file, but allow exactly that one co-located manifest.
+    if manifest.resolve().parent == assets.resolve():
+        if manifest.name != "approved_manifest.json" or manifest.is_symlink():
+            raise IntegrityError("Unexpected co-located approval manifest")
+        names.add(manifest.name)
     if {x.name for x in assets.iterdir()} != names:
         raise IntegrityError("Unexpected or missing pages in directory")
     return f"{count} files verified (independent scholarly approval still required)"
