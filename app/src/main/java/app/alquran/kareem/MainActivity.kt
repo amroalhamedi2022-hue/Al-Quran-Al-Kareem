@@ -85,14 +85,18 @@ private fun QuranApp() {
 @Composable
 private fun Reader(pageCount: Int) {
     val context = LocalContext.current
-    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val configuration = LocalConfiguration.current
+    // Two facing pages are legible on tablets, not on narrow landscape phones.
+    val twoPageSpread = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE &&
+        configuration.screenWidthDp >= 700
     val positionStore = remember(context) { ReaderPositionStore(context) }
+    val bookmarkStore = remember(context) { ReaderBookmarkStore(context) }
     var page by rememberSaveable { mutableIntStateOf(positionStore.read(pageCount)) }
+    var bookmarks by remember { mutableStateOf(bookmarkStore.read(pageCount)) }
     LaunchedEffect(page, pageCount) {
         positionStore.save(page, pageCount)
     }
-    val right = ReaderPagination.rightPage(page, pageCount)
-    val visible = ReaderPagination.visible(page, pageCount, landscape)
+    val visible = ReaderPagination.visible(page, pageCount, twoPageSpread)
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
@@ -105,25 +109,20 @@ private fun Reader(pageCount: Int) {
                 }
             }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = { page = ReaderPagination.previous(page, pageCount, landscape) },
-                enabled = ReaderPagination.hasPrevious(page, pageCount, landscape)
-            ) {
-                Text("السابق")
+        ReaderControls(
+            page = page,
+            pageCount = pageCount,
+            twoPageSpread = twoPageSpread,
+            bookmarks = bookmarks,
+            onPrevious = { page = ReaderPagination.previous(page, pageCount, twoPageSpread) },
+            onNext = { page = ReaderPagination.next(page, pageCount, twoPageSpread) },
+            onJump = { requested -> page = ReaderPagination.clamp(requested, pageCount) },
+            onToggleBookmark = {
+                val updated = ReaderNavigationRules.toggleBookmark(bookmarks, page, pageCount)
+                bookmarkStore.save(updated, pageCount)
+                bookmarks = updated
             }
-            Text(if (landscape) "${right}–${(right + 1).coerceAtMost(pageCount)} / $pageCount" else "$page / $pageCount")
-            Button(
-                onClick = { page = ReaderPagination.next(page, pageCount, landscape) },
-                enabled = ReaderPagination.hasNext(page, pageCount, landscape)
-            ) {
-                Text("التالي")
-            }
-        }
+        )
     }
 }
 
@@ -167,7 +166,8 @@ private fun ApprovedPage(number: Int, modifier: Modifier = Modifier) {
             }
         }
     }
-    Box(modifier.padding(3.dp), contentAlignment = Alignment.Center) {
+    // Original official artwork has transparent pixels: a solid paper backing is required.
+    Box(modifier.padding(3.dp).background(Color.White), contentAlignment = Alignment.Center) {
         when (val image = imageState) {
             is PageImageState.Loading -> CircularProgressIndicator()
             is PageImageState.Ready -> Image(
