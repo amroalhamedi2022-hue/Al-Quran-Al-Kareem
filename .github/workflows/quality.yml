@@ -22,6 +22,9 @@ jobs:
             python scripts/verify_quran_pack.py \
               --pages app/src/main/assets/quran \
               --manifest app/src/main/assets/quran/approved_manifest.json
+            python scripts/verify_approval_seal.py \
+              --kotlin app/src/main/java/app/alquran/kareem/QuranAssetVerifier.kt \
+              --manifest app/src/main/assets/quran/approved_manifest.json
           else
             echo "PASS (scaffold only): no approved Quran pack; NO RELEASE allowed."
           fi
