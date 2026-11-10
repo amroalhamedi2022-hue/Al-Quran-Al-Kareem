@@ -87,8 +87,10 @@ private fun Reader(pageCount: Int) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     // Two facing pages are legible on tablets, not on narrow landscape phones.
-    val twoPageSpread = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE &&
-        configuration.screenWidthDp >= 700
+    val twoPageSpread = ReaderViewportRules.twoPageSpread(
+        configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
+        configuration.screenWidthDp
+    )
     val positionStore = remember(context) { ReaderPositionStore(context) }
     val bookmarkStore = remember(context) { ReaderBookmarkStore(context) }
     var page by rememberSaveable { mutableIntStateOf(positionStore.read(pageCount)) }
