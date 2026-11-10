@@ -1,0 +1,64 @@
+name: Quran pre-release fail-closed gate (NO PUBLISH)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pre-release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Require independently approved complete Quran pack (NO BYPASS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f app/src/main/assets/quran/approved_manifest.json || {
+            echo "::error::604-page Quran pack and signed human approvals are missing. NO RELEASE.";
+            exit 1;
+          }
+          python scripts/verify_quran_pack.py \
+            --pages app/src/main/assets/quran \
+            --manifest app/src/main/assets/quran/approved_manifest.json
+          python scripts/verify_approval_seal.py \
+            --kotlin app/src/main/java/app/alquran/kareem/QuranAssetVerifier.kt \
+            --manifest app/src/main/assets/quran/approved_manifest.json
+      - name: Enforce no network permission or network code
+        run: python scripts/verify_offline.py --manifest app/src/main/AndroidManifest.xml --sources app
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install pinned Android SDK tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMGR="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMGR"
+          "$SDKMGR" --install 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Recheck reader unit tests and build unsigned release for inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:testDebugUnitTest :app:assembleRelease
+      - name: Validate actual packaged Quran image bytes and APK network permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk='app/build/outputs/apk/release/app-release-unsigned.apk'
+          test -f "$apk"
+          python scripts/verify_release_apk.py \
+            --apk "$apk" \
+            --approved-manifest app/src/main/assets/quran/approved_manifest.json
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$apk" | tee /tmp/quran-release-permissions.txt
+          if grep -E 'android.permission.(INTERNET|ACCESS_NETWORK_STATE|CHANGE_NETWORK_STATE|ACCESS_WIFI_STATE|NEARBY_WIFI_DEVICES)' /tmp/quran-release-permissions.txt; then
+            echo "::error::Network permission in proposed release; NO RELEASE"
+            exit 1
+          fi
+          echo "TECHNICAL RELEASE PREFLIGHT PASS — UN-SIGNED AND NOT A HUMAN QURAN APPROVAL"
