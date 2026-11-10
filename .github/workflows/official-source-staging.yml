@@ -10,6 +10,8 @@ on:
       - 'scripts/validate_png.py'
       - 'scripts/audit_render_archive.py'
       - 'scripts/tests/test_render_archive_audit.py'
+      - 'scripts/make_review_ledger.py'
+      - 'scripts/tests/test_review_ledger.py'
       - 'scripts/audit_rendered_pages.py'
       - 'scripts/tests/test_raster_audit.py'
 permissions:
@@ -25,7 +27,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Test source archive gate with synthetic non-Quran fixtures
-        run: python -m unittest scripts/tests/test_official_stage.py -v
+        run: python -m unittest discover -s scripts/tests -v
       - name: Download official Hafs AI archive with three integrity-checked sources
         id: download
         shell: bash
@@ -143,6 +145,9 @@ jobs:
           python scripts/audit_render_archive.py \
             --archive "$RUNNER_TEMP/quran-604-review.zip" \
             --output technical-audit/TECHNICAL_AUDIT.json
+          python scripts/make_review_ledger.py \
+            --render-report unapproved-pages/UNAPPROVED_RENDER_REPORT.json \
+            --output technical-audit/REVIEW_LEDGER_604_UNAPPROVED.csv
       - name: Upload technical audit separately from original page images
         uses: actions/upload-artifact@v4
         with:
