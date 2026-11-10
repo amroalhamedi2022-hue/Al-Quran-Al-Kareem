@@ -154,3 +154,8 @@ Every subsequent work session updates this file with exact paths, commit/run URL
 - Full offline manual-review gallery + 604 original pages: [run 42828626440](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/actions/runs/42828626440), job SUCCESS, review artifact ID `13770557808`, retention until **2026-12-10**. Includes `REVIEW_OFFLINE_UNAPPROVED.html`. No human approvals fabricated or recorded.
 - Changed costly source workflow so complete rerender happens only through `workflow_dispatch` or an intentional `[render-604]` commit tag; routine source guard tests still run on every push in `quality.yml`. Extended human review artifact retention from 3 to 30 days.
 - The archive is reproducible and technically consistent, **NOT YET independently content-approved**. Two qualified independent human page-by-page reviews (604/604) and final APK verification remain the highest-priority release blockers. Do not ship Quran until certified.
+
+### 2026-11-10 — Public independent Quran review recruitment
+- Created [GitHub issue #10](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/issues/10) as a concrete open task for two suitably qualified, independent reviewers to inspect all 604 page renders against authorized source artwork.
+- Includes direct unapproved 604-page review artifact, fully offline gallery and strict per-page criteria. Does NOT invent reviewers or grant approval.
+- The 604/604 reproducibility result is technical source-verification only. **No reviewer signoffs yet, no approved manifest, no signed or released Quran APK.**
