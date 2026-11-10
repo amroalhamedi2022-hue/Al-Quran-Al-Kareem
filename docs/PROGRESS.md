@@ -70,3 +70,20 @@ Every subsequent work session updates this file with exact paths, commit/run URL
 - Added `scripts/render_staged_hafs.py` (commit `24b4e27`): re-checks each staged AI SHA and requires a verified source-stage report; exports 604 ordered 1600px PNGs via Inkscape, checks PNG structure/dimensions, records render hashes as **PENDING review**, cleans partial output on failure. NEVER writes `approved_manifest.json`.
 - Updated source-staging workflow (commit `1d417f0`): after official archive SHA, 604 source AI checks and sample render, it attempts **all 604 rendered pages** and uploads explicitly UNAPPROVED review artifact, 3-day retention.
 - This is pipeline CODE only. **No confirmed official 604-file archive download, complete rasterization, independent human review or final APK.** Workflow run results from the new pipeline have not been verified.
+
+### 2026-11-10 — Verified original archive mirror + foundational offline reader fixes
+
+**Source pipeline implementation (NOT source approval):**
+- Retrieved public mirror provenance metadata from `quran-ws/kfgqpc-resources`: it records the same original Hafs (1441H) archive SHA-256 as the KFGQPC publisher, with **604 vector art files**, total compressed size **466,430,736 bytes**. The mirrored original ZIP is a fallback; the mirror is not an official publisher.
+- Updated `.github/workflows/official-source-staging.yml` (commit `79da124`) to try three sources, and reject wrong **SHA-256 OR byte length** before moving to the next.
+- Created issue [#8](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/issues/8) for public, machine-verifiable run summaries; workflow update `4b5486e` reports download/staging/preview/all-604 step outcomes on future runs even when they fail. **No successful 604-page run confirmed as of this status update**.
+
+**Actual Android functionality implemented, NOT YET re-verified by CI:**
+- `ReaderPagination.kt`: consistent right-to-left spread calculations for all 604 pages and no phantom first/last spreads.
+- `ReaderPositionStore.kt`: persist last-open page on device via private SharedPreferences with no account or Internet.
+- `MainActivity.kt`: connects RTL pagination and local persistence to the reader; reader remains fail-closed until independently approved Quran pages exist.
+- `ReaderPaginationTest.kt`: 8 JUnit cases committed; `app/build.gradle.kts` adds JUnit dependency and `quality.yml` executes `testDebugUnitTest` in CI.
+- Representative commit links: `eea2f6b`, `9e8b37e`, `972e5cc`, `8cf7816`, `9a1c3e4`, `6166787`, `5537049`.
+- **Test status:** tests are committed, GitHub Actions execution of *new* tests is NOT confirmed as passing. Earlier base build (run 42790593497) passed before these changes.
+
+**Highest priority unchanged:** 604 actual source assets downloaded and verified; page rendering and independent human visual review; only then official PNG pack, manifest seal, integrated Android tests and signed release. No page art, text or offline policy was changed.
