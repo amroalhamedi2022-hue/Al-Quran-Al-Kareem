@@ -1,32 +1,41 @@
 # LIVE PROGRESS — القرآن الكريم
 
-**Updated: 2026-11-10.** Only commits and verified checks count as progress.
+**Last updated:** 2026-11-10 | **Canonical repository branch:** main.
+**Truth labels:** DOCUMENTED / IMPLEMENTED / TESTED / APPROVED / RELEASED are distinct.
 
-| Stage | Current | Evidence and blocker |
+## Status by workstream
+
+| Stage | Status | Evidence / blocker |
 |---|---|---|
-| P0 Plan, locked scope & safety policy | ✅ COMMITTED | README + docs/MASTER_PLAN.md, QURAN_INTEGRITY.md, DECISIONS.md, TESTS |
-| P0 Source guard, offline guard, APK audit tools | ✅ CODE COMMITTED; 🧪 CI results not yet verified | scripts/ verify_quran_pack, verify_offline, verify_upstream_archive, verify_release_apk; 12 synthetic unit tests |
-| P1 Official Quran source archive | ⛔ NOT OBTAINED | KFGQPC upstream source page and published SHA-256 documented; actual archive not retrieved or checked |
-| P1 604 reviewed image files | ⛔ NOT APPROVED | no original assets, no page-by-page comparison or 2-person signoff |
-| P2 Android app scaffold | ✅ COMMITTED, 🧪 BUILD NOT VERIFIED | Gradle Kotlin/Compose project + runtime fail-closed validator |
-| P2 Functional 604-page reader | ⛔ NOT VERIFIED | can display immutable local bitmaps only AFTER pack authenticated; no approved pack yet |
-| P3 Ayah-by-ayah self-reveal | ⛔ NOT STARTED | verified coordinates required |
-| P4 Physical 3D page curl | ⛔ NOT STARTED | source-first dependency |
-| P5 Liquid Glass themes | ⛔ NOT STARTED | source-first dependency |
-| P6 Offline utilities | ⛔ NOT STARTED | requires verified Quran index |
-| P7 Final signed APK + device review | ⛔ NOT STARTED | no accepted pack, verified build or signing |
+| P0 Locked requirements and all-stage plan | ✅ DOCUMENTED | README, docs/MASTER_PLAN.md, QURAN_INTEGRITY.md, DECISIONS.md, SOURCE_PROVENANCE.md |
+| P0 Automated source and offline checks | ✅ TESTED | GitHub Actions run 42790593497, **12 of 12 Python tests PASSED**; source scan passed |
+| P1 Authentic official Hafs source archive | ⛔ NOT ACQUIRED / NOT VERIFIED | KFGQPC website & upstream published SHA identified; source download not completed; no content approval |
+| P1 All 604 original page images and 2 independent approvals | ⛔ NOT APPROVED | No page pack, independently signed manifest, rendered page review |
+| P2 Android Kotlin/Compose foundation | ✅ IMPLEMENTED and ✅ BUILT | :app:assembleDebug BUILD SUCCESSFUL in CI run 42790593497 |
+| P2 Offline permission check on produced APK | ✅ TESTED | Android aapt2 permissions inspection PASS (no declared network permissions) |
+| P2 Actual complete Quran reading | ⛔ BLOCKED by P1 | Only codepath to render verified pages; no authentic page assets available, intentionally fails closed |
+| P3 Single-ayah self-check visual reveal | ⏳ NOT IMPLEMENTED | Requires independently verified verse coordinate masks; no audio or scoring |
+| P4 Realistic 3D page curl | ⏳ NOT IMPLEMENTED | After actual reviewed Quran reader |
+| P5 Liquid Glass design system | ⏳ NOT IMPLEMENTED | After source and reader |
+| P6 Index, bookmarks, search, manual wird/khatma | ⏳ NOT IMPLEMENTED | Requires approved metadata |
+| P7 Signed official Quran APK, update/device tests | ⛔ NO RELEASE | Source/604 review, hardware tests, signing not completed |
 
-### Actual published commits
-- 484a0f9ed341483e5171482abad9a954b6ce18ab — initialize.
-- 068b6e3516948f0ba61c8614e635b6008d2084b4 — master plan & source rules.
-- 9eee5ea4bc1105cdff00932c427c58a24d19b146 — Android scaffold, Python guards, CI.
-- Most recent changes: independent APK page blob audit + official upstream checksum verifier, tests (current commit).
+## Verified CI evidence (2026-11-10)
+- GitHub Actions run URL: https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/actions/runs/42790593497
+- source-guards job: **SUCCESS**, 12 unittest fixture checks passing.
+- android-compile job: **SUCCESS**, `:app:assembleDebug` successful.
+- aapt2 permission inspection: **PASS**, zero Android network permissions in the produced debug APK.
+- The CI debug APK **does NOT contain approved Quran pages**; success is a build-safety result, NOT Quranic content approval, real hardware validation or product release.
+- Pull request #7 (compatibility/offline verifier improvements) merged into main: https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/pull/7 ; merge commit `c7a84f1ee0bce6ee93a46add7b07212387e54292`.
 
-### Next priority (unchanged)
-1. Obtain original KFGQPC Hafs vector archive and independently compare to upstream SHA, preserve unchanged.
-2. Convert carefully to all 604 numbered page images; visually review all against source. Track publisher/source rights and reviewer records.
-3. Pin independent reviewed manifest and audit APK assets, then verify 604-page Android reader.
-4. Test display before proceeding to self-reveal, 3D paper curling, Liquid Glass.
+## Outstanding highest priority
+1. Obtain authoritative Hafs/Madinah original vector archive from KFGQPC, preserve original untouched and run scripts/verify_upstream_archive.py against published upstream SHA.
+2. Produce pages 001.png–604.png using a non-editorial, repeatable process; review every exported page plus source layout, and record independent approvals & manifest.
+3. Bundle audited pages; perform true offline 604-page reader tests on Android and tablet.
+4. Only after that: verified ayah-reveal map, paper curling, liquid glass, reader utilities and signed release.
 
-### Required evidence not yet available
-No APK build success verified, no official page files, no scholarly page review, no device test. CI pending and not asserted PASS. Tests use invented **non-Quran fixture bytes**, not verses.
+## Invariant scope (never broaden silently)
+Application title **القرآن الكريم**. Quran text never edited, retyped, corrected by AI or OCR. Offline-only. No recitation audio, no smart memory review, no similar-verses module, no teacher portal. Word interpretation on tap deferred post-v1, NOT implemented.
+
+## Session completion rule
+Every subsequent work session updates this file with exact paths, commit/run URLs, PASS/FAIL and remaining blockers. No full-completion claim without actual G1–G7 acceptance.
