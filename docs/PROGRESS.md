@@ -128,3 +128,21 @@ Every subsequent work session updates this file with exact paths, commit/run URL
 - If and only if the authentic pack exists and passes checks, workflow runs Android unit tests + `assembleRelease`, then verifies the **actual unsigned APK's embedded 604 PNG bytes** against the independent approved manifest and inspects merged APK permissions via aapt2. It does not sign, upload, or publish any APK.
 - **As of this entry:** gate is committed but **expected to FAIL** (no human-reviewed pack or pinned approved-manifest hash). The workflow has NOT been claimed passing or run; this protects the user from a misleading scaffold-release success.
 - A separate human signoff and final signed-APK release remains REQUIRED after this technical preflight.
+
+### 2026-11-10 — Verified offline reader navigation foundation (PR #9 merged)
+
+**Real code merged into main:**
+- `ReaderNavigationRules.kt`: strict page input validation in Western, Arabic-Indic and Persian digits, bounds 1..604, pure bookmark set logic. New `ReaderNavigationRulesTest.kt`: nine JUnit test methods.
+- `ReaderBookmarkStore.kt`: Android private local-only bookmarks, no network/backup/account. `ReaderControls.kt`: go-to-page dialog, save/remove bookmark and browse saved pages.
+- `MainActivity.kt`: integrates local bookmarks, navigation controls and white paper behind transparent Quran artwork. Existing `ReaderPositionStore` retains last page locally.
+- `ReaderViewportRules.kt` + `ReaderViewportRulesTest.kt` merged from [PR #9](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/pull/9), squash commit `18746612979d63a398163e75e8ef595c4b5601f7`. Double-page view limited to landscape screens >=700dp; portrait/narrow screens show one page.
+- Local `kotlinc-jvm 1.9.0` standalone eight-assertion check of digit parsing and bookmarks: PASS.
+
+**Actual CI evidence:** [PR #9 workflow run 42828072808](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/actions/runs/42828072808):
+- `source-guards`: SUCCESS; **63 Python unit tests passed**, offline source scan checked 12 source files, no banned permission/code found.
+- `android-compile`: SUCCESS, `assembleDebug` BUILD SUCCESSFUL and `testDebugUnitTest` BUILD SUCCESSFUL (includes new reader Kotlin tests).
+- `aapt2` inspection of debug APK: PASS, **no declared Android network permissions**.
+- This is a debug scaffold **without approved Quran pages**, not a readable Quran APK nor a final signed release.
+- **Still blocked:** human certification of 604 page conversion by two qualified independent reviewers, separately pinned approved manifest hash, final APK audit, device tests and premium page curl / Liquid Glass.
+
+**Next:** continue no-text-mutation controls, manual review and reader input improvements. Do not bypass Quran validation gate.
