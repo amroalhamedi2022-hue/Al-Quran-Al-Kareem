@@ -156,7 +156,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: UNAPPROVED-604-technical-audit
-          path: technical-audit/TECHNICAL_AUDIT.json
+          path: technical-audit/
           retention-days: 30
           if-no-files-found: error
       - name: Create offline human review gallery (not approval)
