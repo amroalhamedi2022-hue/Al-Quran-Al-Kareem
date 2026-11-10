@@ -27,12 +27,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -127,21 +129,45 @@ private fun Reader(pageCount: Int) {
 
 @Composable
 private fun ApprovedPage(number: Int, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val bitmap by produceState<Bitmap?>(initialValue = null, number) {
-        value = withContext(Dispatchers.IO) {
-            context.assets.open("quran/%03d.png".format(java.util.Locale.ROOT, number)).use {
-                BitmapFactory.decodeStream(it)
+    val assets = LocalContext.current.assets
+    // The composition slot is recreated on every page change: never briefly
+    // display the previous Quran page with the new page number.
+    key(number) {
+        val state by produceState<Pair<Bitmap?, Boolean>>(
+            initialValue = Pair(null, false), number, assets
+        ) {
+            value = withContext(Dispatchers.IO) {
+                try {
+                    val decoded = assets.open(
+                        "quran/%03d.png".format(java.util.Locale.ROOT, number)
+                    ).use { stream -> BitmapFactory.decodeStream(stream) }
+                    if (decoded == null) Pair(null, true) else Pair(decoded, false)
+                } catch (_: Exception) {
+                    // An invalid page must never be silently replaced by another.
+                    Pair(null, true)
+                }
             }
         }
-    }
-    Box(modifier.padding(3.dp), contentAlignment = Alignment.Center) {
-        if (bitmap == null) CircularProgressIndicator()
-        else Image(
-            bitmap = bitmap!!.asImageBitmap(),
-            contentDescription = "صفحة $number من المصحف",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit
-        )
+        Box(
+            modifier = modifier.padding(3.dp).background(Color.White),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                state.second -> Text(
+                    text = "تعذّر عرض الصفحة $number من المصحف.",
+                    color = Color.Black,
+                    textAlign = TextAlign.Center
+                )
+                state.first == null -> CircularProgressIndicator()
+                else -> state.first?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "صفحة $number من المصحف",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+            }
+        }
     }
 }
