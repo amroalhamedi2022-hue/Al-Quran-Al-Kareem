@@ -51,6 +51,8 @@ jobs:
           gradle-version: '8.13'
       - name: Compile debug scaffold (not a verified Quran release)
         run: gradle --no-daemon :app:assembleDebug
+      - name: Run native reader pagination tests
+        run: gradle --no-daemon :app:testDebugUnitTest
       - name: Check debug APK does not request Internet
         shell: bash
         run: |
