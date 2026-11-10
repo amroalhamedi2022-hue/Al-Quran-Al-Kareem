@@ -21,6 +21,9 @@ permissions:
   issues: write
 jobs:
   verify-and-preview:
+    # Expensive 604-page regeneration is intentional, not triggered by every test edit.
+    # Other pushes are covered by the lightweight quality.yml test workflow.
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[render-604]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -170,7 +173,7 @@ jobs:
         with:
           name: UNAPPROVED-Hafs-604-PNG-for-human-review
           path: unapproved-pages/
-          retention-days: 3
+          retention-days: 30
           compression-level: 6
           if-no-files-found: error
 
