@@ -87,3 +87,9 @@ Every subsequent work session updates this file with exact paths, commit/run URL
 - **Test status:** tests are committed, GitHub Actions execution of *new* tests is NOT confirmed as passing. Earlier base build (run 42790593497) passed before these changes.
 
 **Highest priority unchanged:** 604 actual source assets downloaded and verified; page rendering and independent human visual review; only then official PNG pack, manifest seal, integrated Android tests and signed release. No page art, text or offline policy was changed.
+
+### 2026-11-10 — Independent local Kotlin pagination verification
+- Reproduced the committed pure `ReaderPagination` logic in a clean local Kotlin compiler harness (`kotlinc-jvm 1.9.0`).
+- **PASS:** eight RTL portrait/landscape scenarios plus exhaustive constraints for every one of the **604 page positions**: visible spread order, valid bounds, and forward/backward progression.
+- **Scope limitation:** local pure-Kotlin logic only. GitHub JUnit CI, Compose integration, actual Android APK and on-device screenshots have **not** been confirmed in this session; do not equate these.
+- GitHub Action source audit issue [#8](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/issues/8) still had **no machine-posted result comment** when last checked. Do not mark official source as downloaded or approved.
