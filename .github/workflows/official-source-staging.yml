@@ -8,6 +8,8 @@ on:
       - 'scripts/tests/test_official_stage.py'
       - 'scripts/render_staged_hafs.py'
       - 'scripts/validate_png.py'
+      - 'scripts/audit_render_archive.py'
+      - 'scripts/tests/test_render_archive_audit.py'
       - 'scripts/audit_rendered_pages.py'
       - 'scripts/tests/test_raster_audit.py'
 permissions:
@@ -119,6 +121,35 @@ jobs:
             --source "$GITHUB_WORKSPACE/unapproved-pages" \
             --out "$RUNNER_TEMP/TECHNICAL_AUDIT_ONLY.json"
           cp "$RUNNER_TEMP/TECHNICAL_AUDIT_ONLY.json" "$GITHUB_WORKSPACE/unapproved-pages/"
+      - name: Audit complete 604-page render archive (UNAPPROVED)
+        id: audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_STORED
+          from tempfile import gettempdir
+          import os
+          root = Path('unapproved-pages')
+          archive = Path(os.environ['RUNNER_TEMP']) / 'quran-604-review.zip'
+          with ZipFile(archive, 'w', compression=ZIP_STORED, allowZip64=True) as zipped:
+              for file in sorted(root.iterdir()):
+                  if file.is_file():
+                      zipped.write(file, file.name)
+          print('Created unapproved review archive:', archive, archive.stat().st_size)
+          PY
+          mkdir -p technical-audit
+          python scripts/audit_render_archive.py \
+            --archive "$RUNNER_TEMP/quran-604-review.zip" \
+            --output technical-audit/TECHNICAL_AUDIT.json
+      - name: Upload technical audit separately from original page images
+        uses: actions/upload-artifact@v4
+        with:
+          name: UNAPPROVED-604-technical-audit
+          path: technical-audit/TECHNICAL_AUDIT.json
+          retention-days: 30
+          if-no-files-found: error
       - name: Upload all 604 UNAPPROVED PNG pages for review (short retention)
         uses: actions/upload-artifact@v4
         with:
@@ -137,6 +168,7 @@ jobs:
           SOURCE_STAGE: ${{ steps.stage.outcome }}
           SAMPLE_PREVIEW: ${{ steps.preview.outcome }}
           ALL_604_RENDER: ${{ steps.render_all.outcome }}
+          COMPLETE_ARCHIVE_AUDIT: ${{ steps.audit.outcome }}
           TECHNICAL_AUDIT: ${{ steps.technical_audit.outcome }}
         run: |
           set -euo pipefail
@@ -149,6 +181,7 @@ jobs:
             echo "- 604 AI originals staging: **$SOURCE_STAGE**"
             echo "- Four page samples: **$SAMPLE_PREVIEW**"
             echo "- All 604 rendered PNG for independent review: **$ALL_604_RENDER**"
+            echo "- Independent full-output structural + SHA audit: **$COMPLETE_ARCHIVE_AUDIT**"
             echo "- Full PNG decode/alpha margin/hash technical audit: **$TECHNICAL_AUDIT**"
             echo
             echo "This is an automated integrity/conversion report ONLY. No scholarly approval or release."
