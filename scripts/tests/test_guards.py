@@ -1,4 +1,6 @@
 import hashlib
+import struct
+import zlib
 import json
 import sys
 import tempfile
@@ -22,7 +24,11 @@ class Guards(unittest.TestCase):
         rows=[]
         for n in range(1,4):
             file=f"{n:03d}.png"
-            data=b"\x89PNG\r\n\x1a\n"+f"unit-test-only-{n}".encode()
+            def chunk(kind, payload):
+                return struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", zlib.crc32(kind + payload) & 0xffffffff)
+            ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
+            pixels = zlib.compress(bytes([0, n, n, n]))
+            data = b"\\x89PNG\\r\\n\\x1a\\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", pixels) + chunk(b"IEND", b"")
             (pages/file).write_bytes(data)
             rows.append({"page":n,"file":file,"sha256":hashlib.sha256(data).hexdigest()})
         manifest=self.root/"manifest.json"
