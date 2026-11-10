@@ -1,0 +1,68 @@
+name: Cross-run Quran render reproducibility (TECHNICAL ONLY)
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/compare-two-renders.yml'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+jobs:
+  compare-independent-renders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test strict comparison using ONLY synthetic non-Quran fixtures
+        run: python -m unittest scripts/tests/test_compare_full_renders.py -v
+      - name: Restore independently produced 604-page output A
+        uses: actions/download-artifact@v4
+        with:
+          name: UNAPPROVED-Hafs-604-PNG-for-human-review
+          run-id: 42799214618
+          github-token: ${{ github.token }}
+          path: first
+      - name: Restore independently produced 604-page output B
+        uses: actions/download-artifact@v4
+        with:
+          name: UNAPPROVED-Hafs-604-PNG-for-human-review
+          run-id: 42811461469
+          github-token: ${{ github.token }}
+          path: second
+      - name: Compare all 604 original PNG byte hashes and layout metadata
+        id: compare
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/compare_full_renders.py \
+            --left first --right second \
+            --out cross-run-reproducibility-UNAPPROVED.json
+      - name: Save reproducibility report (never approval)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TECHNICAL-604-render-reproducibility-NOT-APPROVED
+          path: cross-run-reproducibility-UNAPPROVED.json
+          retention-days: 30
+      - name: Report actual comparison result to public source review issue
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ steps.compare.outcome }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### Cross-run 604-page render reproducibility"
+            echo
+            echo "- Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- Independent source runs: 42799214618 and 42811461469"
+            echo "- Compare result: **$RESULT**"
+            echo
+            echo "This compares byte hashes and rendering dimensions, NOT any Quranic spelling/diacritic correctness. NO HUMAN APPROVAL OR APK RELEASE."
+          } > "$RUNNER_TEMP/reproducibility-status.md"
+          gh issue comment 8 --repo "${{ github.repository }}" --body-file "$RUNNER_TEMP/reproducibility-status.md"
