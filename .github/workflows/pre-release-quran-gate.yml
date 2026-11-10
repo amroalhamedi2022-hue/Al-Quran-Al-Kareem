@@ -1,8 +1,14 @@
 name: Quran pre-release fail-closed gate (NO PUBLISH)
 on:
   workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Successful official-source GitHub Actions run with original 604 PNGs; NOT a human approval"
+        required: true
+        type: string
 permissions:
   contents: read
+  actions: read
 jobs:
   pre-release-gate:
     runs-on: ubuntu-latest
@@ -12,14 +18,32 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Require independently approved complete Quran pack (NO BYPASS)
+      - name: Require independent approval seal BEFORE retrieving any Quran image (NO BYPASS)
         shell: bash
         run: |
           set -euo pipefail
           test -f app/src/main/assets/quran/approved_manifest.json || {
-            echo "::error::604-page Quran pack and signed human approvals are missing. NO RELEASE.";
+            echo "::error::Publisher pages lack documented independent human approval. NO RELEASE.";
             exit 1;
           }
+          python scripts/verify_approval_seal.py \
+            --kotlin app/src/main/java/app/alquran/kareem/QuranAssetVerifier.kt \
+            --manifest app/src/main/assets/quran/approved_manifest.json
+      - name: Download untrusted original PNG artwork from official-source CI output
+        uses: actions/download-artifact@v4
+        with:
+          name: UNAPPROVED-Hafs-604-PNG-for-human-review
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/candidate-quran-artifact
+      - name: Copy exact original PNG bytes ONLY if independently approved
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/stage_verified_release_assets.py \
+            --source "$RUNNER_TEMP/candidate-quran-artifact" \
+            --destination app/src/main/assets/quran \
+            --manifest app/src/main/assets/quran/approved_manifest.json
           python scripts/verify_quran_pack.py \
             --pages app/src/main/assets/quran \
             --manifest app/src/main/assets/quran/approved_manifest.json
