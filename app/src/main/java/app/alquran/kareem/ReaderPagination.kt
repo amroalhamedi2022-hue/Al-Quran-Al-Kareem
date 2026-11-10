@@ -24,8 +24,10 @@ internal object ReaderPagination {
     }
 
     fun next(page: Int, total: Int, landscape: Boolean): Int =
-        if (landscape) (rightPage(page, total) + 2).coerceAtMost(total)
-        else (clamp(page, total) + 1).coerceAtMost(total)
+        if (landscape) {
+            val right = rightPage(page, total)
+            if (right + 2 <= total) right + 2 else right
+        } else (clamp(page, total) + 1).coerceAtMost(total)
 
     fun previous(page: Int, total: Int, landscape: Boolean): Int =
         if (landscape) (rightPage(page, total) - 2).coerceAtLeast(1)
