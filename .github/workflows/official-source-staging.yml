@@ -14,6 +14,8 @@ on:
       - 'scripts/tests/test_review_ledger.py'
       - 'scripts/audit_rendered_pages.py'
       - 'scripts/tests/test_raster_audit.py'
+      - 'scripts/make_review_gallery.py'
+      - 'scripts/tests/test_review_gallery.py'
 permissions:
   contents: read
   issues: write
@@ -155,6 +157,12 @@ jobs:
           path: technical-audit/TECHNICAL_AUDIT.json
           retention-days: 30
           if-no-files-found: error
+      - name: Create offline human review gallery (not approval)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest scripts/tests/test_review_gallery.py -v
+          python scripts/make_review_gallery.py --pages-dir "$GITHUB_WORKSPACE/unapproved-pages"
       - name: Upload all 604 UNAPPROVED PNG pages for review (short retention)
         uses: actions/upload-artifact@v4
         with:
