@@ -58,12 +58,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
@@ -131,6 +133,7 @@ private fun QuranApp() {
 @Composable
 private fun Reader(pageCount: Int) {
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
     val configuration = LocalConfiguration.current
     // Zoom uses one page at a time to prevent magnified pages overlapping
     // the neighbor on tablets. The original image is intact at 100%.
@@ -369,6 +372,24 @@ private fun Reader(pageCount: Int) {
                     .focusable()
                     .pointerInput(page, twoPageSpread, zoomScale) {
                         detectTapGestures(
+                            onLongPress = { touch ->
+                                // Long-press always bookmarks the page actually
+                                // under the finger, even in a landscape spread.
+                                if (!isTurning) {
+                                    val updated = ReaderPageBookmarkRules.toggleAtTouch(
+                                        bookmarks,
+                                        visible,
+                                        touch.x,
+                                        size.width.toFloat(),
+                                        pageCount
+                                    )
+                                    if (updated != bookmarks) {
+                                        bookmarkStore.save(updated, pageCount)
+                                        bookmarks = updated
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
+                                }
+                            },
                             onDoubleTap = { tap ->
                                 if (!isTurning) {
                                 val nextZoom = ReaderZoomRules.toggleDoubleTap(zoomScale)
