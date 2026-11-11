@@ -17,7 +17,7 @@ import java.util.Locale
 internal object QuranPublisherSourceVerifier {
     private const val SOURCE_SHA256 =
         "280c5d71ca16aaeeb3a343be1b92c76fa6df71d0671e202c026fde12402d9eef"
-    private const val SOURCE_MANIFEST = "source_preview_manifest.json"
+    private const val SOURCE_MANIFEST = "source_provenance_manifest.json"
     private val SHA256 = Regex("[0-9a-f]{64}")
 
     suspend fun check(assets: AssetManager): QuranAssetVerifier.Status.SourceVerified? =
