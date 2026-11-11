@@ -73,7 +73,7 @@ def stage_publisher_source(source: Path, destination: Path, *, count: int=604, d
             raise PublisherSourceError(f"Source image mismatch: page {number}")
     destination.parent.mkdir(parents=True, exist_ok=True)
     # Never create partly valid app assets on hash failure.
-    with tempfile.TemporaryDirectory(prefix="quran-verified-preview-",dir=destination.parent) as tmp:
+    with tempfile.TemporaryDirectory(prefix="quran-source-stage-",dir=destination.parent) as tmp:
         stage=Path(tmp)
         for number in range(1,count+1):
             name=f"{number:03d}.png"
@@ -93,7 +93,7 @@ def stage_publisher_source(source: Path, destination: Path, *, count: int=604, d
             raise
     return {"status":"PUBLISHER_SOURCE_BYTES_VERIFIED",
             "source_sha256":PIN,"pages":count,
-            "release_allowed":True,"bytes_modified":False}
+            "source_integrity_verified":True,"institutional_certification":False,"bytes_modified":False}
 
 if __name__=="__main__":
     p=argparse.ArgumentParser()
