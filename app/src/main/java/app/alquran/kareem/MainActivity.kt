@@ -85,17 +85,32 @@ class MainActivity : ComponentActivity() {
 private fun QuranApp() {
     val assets = LocalContext.current.assets
     var status by remember { mutableStateOf<QuranAssetVerifier.Status?>(null) }
+    var pagesChecked by remember { mutableIntStateOf(0) }
     LaunchedEffect(assets) {
+        pagesChecked = 0
         val approved = QuranAssetVerifier.check(assets)
-        // Exact original publisher images are accepted in signed release too.
-        // Source integrity is not a claim of institutional certification.
+        // Publisher-original PNGs can be shown only AFTER all 604 hashes match.
+        // Progress is informational; it never bypasses this fail-closed gate.
         status = if (approved is QuranAssetVerifier.Status.Unavailable) {
-            QuranPublisherSourceVerifier.check(assets) ?: approved
+            QuranPublisherSourceVerifier.check(assets) { done ->
+                pagesChecked = done
+            } ?: approved
         } else approved
     }
     when (val verified = status) {
-        null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        null -> Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+        ) {
             CircularProgressIndicator()
+            Text("التحقق من سلامة صفحات المصحف", textAlign = TextAlign.Center)
+            if (pagesChecked > 0) {
+                Text(
+                    text = "تم فحص $pagesChecked من 604 صفحة",
+                    textAlign = TextAlign.Center
+                )
+            }
         }
         is QuranAssetVerifier.Status.Unavailable -> Box(
             Modifier.fillMaxSize().padding(32.dp),
