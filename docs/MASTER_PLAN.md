@@ -27,9 +27,9 @@ Order is by dependency, not visual appeal. Any blocker in textual authenticity s
 
 ### P2 — Basic Android reader, entirely offline
 - Native Kotlin/Compose project and AndroidManifest with no INTERNET / ACCESS_NETWORK_STATE and no embedded tracking/network clients.
-- Approved assets bundled in base APK; fresh installs must work without Wi-Fi, mobile data, accounts or downloads.
+- Authenticated publisher-source assets bundled in signed base APK; fresh installs must work without Wi-Fi, mobile data, accounts or downloads. ✅ Startup reports progress while validating each of all 604 original image SHA-256 hashes and NEVER opens an incomplete Quran page pack.
 - Portrait: single page. Landscape tablet: paired pages with correct RTL order and first/last-page handling. Display actual verified original page graphics without rewriting text.
-- ✅ Source-safe 100%–300% image zoom and bounded pan; double-tap restores normal text; disable page flipping while zoomed. On a landscape tablet, magnify one page and restore paired view at 100%. Stable navigation and cautious adjacent-page bitmap prefetch. Physical-device zoom testing still pending.
+- ✅ Source-safe 100%–300% image zoom **clamped to the actual fitted 1600×2287 image rectangle**, even on wide landscape tablets; double-tap magnifies the exact sheet touched in a two-page spread and returns at 100%. Leaving zoom navigates to the correct NEXT/PREVIOUS full spread; no page flipping while drag-panning. Stable neighboring-page bitmap prefetch. Physical-device touch/mouse/zoom testing still pending.
 - Local-only last-page persistence (with migration tests); initial source-not-approved screen is **not** Quran content.
 **Exit G2:** 604 locally accessible pages, checked layouts, consistent navigation, airplane-mode operation on devices.
 
