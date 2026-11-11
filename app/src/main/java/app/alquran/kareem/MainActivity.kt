@@ -1,5 +1,6 @@
 package app.alquran.kareem
 
+import android.content.ComponentCallbacks2
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
@@ -159,8 +160,23 @@ private fun Reader(pageCount: Int) {
     val surahs = remember(context) { SurahIndexStore.load(context.assets) }
     val sections = remember(context) { QuranSectionStore.load(context.assets) }
     val pageAnchors = remember(context) { VersePageStore.load(context.assets) }
-    DisposableEffect(pageRepository) {
-        onDispose { pageRepository.trim() }
+    DisposableEffect(pageRepository, context) {
+        // Original high-resolution Quran PNG pages are large. Release only
+        // cached references as Android reports memory pressure; do not call
+        // Bitmap.recycle() because an Image may still be displaying one.
+        val callback = object : ComponentCallbacks2 {
+            override fun onConfigurationChanged(newConfig: Configuration) = Unit
+            override fun onLowMemory() { pageRepository.trim() }
+            override fun onTrimMemory(level: Int) {
+                pageRepository.onMemoryPressure(level)
+            }
+        }
+        val applicationContext = context.applicationContext
+        applicationContext.registerComponentCallbacks(callback)
+        onDispose {
+            applicationContext.unregisterComponentCallbacks(callback)
+            pageRepository.trim()
+        }
     }
     var page by rememberSaveable { mutableIntStateOf(positionStore.read(pageCount)) }
     // A landscape double-tap on the LEFT sheet may change the selected
