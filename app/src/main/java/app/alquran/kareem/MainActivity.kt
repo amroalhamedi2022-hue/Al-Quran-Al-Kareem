@@ -114,6 +114,7 @@ private fun Reader(pageCount: Int) {
     // The complete source-checked 114-Surah index stays bundled for offline use.
     val surahs = remember(context) { SurahIndexStore.load(context.assets) }
     val sections = remember(context) { QuranSectionStore.load(context.assets) }
+    val pageAnchors = remember(context) { VersePageStore.load(context.assets) }
     DisposableEffect(pageRepository) {
         onDispose { pageRepository.trim() }
     }
@@ -226,6 +227,7 @@ private fun Reader(pageCount: Int) {
             readPages = readPages,
             surahs = surahs,
             sections = sections,
+            pageAnchors = pageAnchors,
             onPrevious = { page = ReaderPagination.previous(page, pageCount, twoPageSpread) },
             onNext = { page = ReaderPagination.next(page, pageCount, twoPageSpread) },
             onJump = { requested -> page = ReaderPagination.clamp(requested, pageCount) },
