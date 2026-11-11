@@ -2,7 +2,10 @@ name: Build source-hash-verified 604-page Quran DEBUG preview (NOT RELEASE)
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/build-debug-source-preview.yml']
+    paths:
+      - '.github/workflows/build-debug-source-preview.yml'
+      - 'app/src/main/java/app/alquran/kareem/KhatmaProgressRules.kt'
+      - 'app/src/main/java/app/alquran/kareem/KhatmaProgressStore.kt'
   workflow_dispatch:
     inputs:
       source_run_id:
