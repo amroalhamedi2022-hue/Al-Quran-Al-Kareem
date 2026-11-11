@@ -22,14 +22,25 @@ class QuranSectionRulesTest {
         )
     }
 
+    private val rub = (1..240).map { number ->
+        QuranSectionStart(
+            number,
+            page = 1 + (number - 1) * 2,
+            surah = 1 + (number - 1) / 3,
+            ayah = 1 + (number - 1) % 3
+        )
+    }
+
     @Test fun acceptsFullOrderedSections() {
         assertTrue(QuranSectionRules.isValid(juz, 30))
         assertTrue(QuranSectionRules.isValid(hizb, 60))
+        assertTrue(QuranSectionRules.isValid(rub, 240))
     }
 
     @Test fun refusesMissingSections() {
         assertFalse(QuranSectionRules.isValid(juz.dropLast(1), 30))
         assertFalse(QuranSectionRules.isValid(hizb.dropLast(1), 60))
+        assertFalse(QuranSectionRules.isValid(rub.dropLast(1), 240))
     }
 
     @Test fun refusesWrongJuzThirtyStart() {
