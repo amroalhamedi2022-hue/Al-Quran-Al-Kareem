@@ -32,16 +32,34 @@ class ReaderZoomRulesTest {
         assertEquals(1f, ReaderZoomRules.toggleDoubleTap(3f))
     }
 
-    @Test fun panIsLimitedToVisibleImageAndCannotLoseThePage() {
+    @Test fun portraitPanUsesTheExactScaledFittedQuranImageNotTheViewport() {
+        // 1600x2287 fitted into 600x1000 is 600x857.625.
+        // At 2x, horizontal range is ±300 but vertical range is ±357.625.
         val pan = ReaderZoomRules.clampPan(5000f, -5000f, 600f, 1000f, 2f)
-        assertEquals(300f, pan.x)
-        assertEquals(-500f, pan.y)
+        assertEquals(300f, pan.x, 0.02f)
+        assertEquals(-357.625f, pan.y, 0.02f)
     }
 
-    @Test fun panBoundariesMatchZoomFactor() {
+    @Test fun moderateZoomDoesNotAllowHugeEmptyEdges() {
         val pan = ReaderZoomRules.clampPan(-300f, 300f, 1000f, 1000f, 1.5f)
-        assertEquals(-250f, pan.x)
-        assertEquals(250f, pan.y)
+        // At ContentScale.Fit, image width is 1600 * (1000/2287).
+        val maxX = (1600f * (1000f / 2287f) * 1.5f - 1000f) / 2f
+        assertEquals(-maxX, pan.x, 0.02f)
+        assertEquals(250f, pan.y, 0.02f)
+    }
+
+    @Test fun landscapeTabletCannotSlideNarrowPortraitArtworkOffscreen() {
+        val pan = ReaderZoomRules.clampPan(-5000f, 5000f, 1200f, 700f, 2f)
+        // Fitted page remains narrower than landscape viewport even at 2x.
+        assertEquals(0f, pan.x)
+        assertEquals(350f, pan.y, 0.02f)
+    }
+
+    @Test fun zoomThreeAllowsPanOnlyWithinActualPaintedPixels() {
+        val pan = ReaderZoomRules.clampPan(999f, 999f, 1200f, 700f, 3f)
+        val widthAtThree = 1600f * (700f / 2287f) * 3f
+        assertEquals((widthAtThree - 1200f) / 2f, pan.x, 0.02f)
+        assertEquals(700f, pan.y, 0.02f)
     }
 
     @Test fun invalidDimensionsOrMotionNeverShiftQuran() {
