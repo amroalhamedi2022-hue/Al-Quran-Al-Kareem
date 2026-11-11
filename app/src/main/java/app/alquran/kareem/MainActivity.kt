@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -11,6 +12,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
@@ -37,19 +40,24 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -126,6 +134,63 @@ private fun Reader(pageCount: Int) {
     var showControls by rememberSaveable { mutableStateOf(true) }
     var revealActive by rememberSaveable { mutableStateOf(false) }
     var revealStep by rememberSaveable { mutableIntStateOf(0) }
+    var turnOffsetPx by remember { mutableFloatStateOf(0f) }
+    var pageViewportWidthPx by remember { mutableFloatStateOf(1f) }
+    var isTurning by remember { mutableStateOf(false) }
+    val turnScope = rememberCoroutineScope()
+
+    fun requestPageTurn(forward: Boolean) {
+        if (isTurning) return
+        val target = if (forward) ReaderPagination.next(page, pageCount, twoPageSpread)
+            else ReaderPagination.previous(page, pageCount, twoPageSpread)
+        val initial = turnOffsetPx
+        turnScope.launch {
+            isTurning = true
+            try {
+                if (target == page) {
+                    // Page boundary: spring the sheet back rather than crossing it.
+                    animate(initial, 0f, animationSpec = tween(150)) { value, _ ->
+                        turnOffsetPx = value
+                    }
+                } else {
+                    // Load the destination before leaving the readable page.
+                    // A failed load still produces the normal fail-closed error page.
+                    ReaderPagination.visible(target, pageCount, twoPageSpread)
+                        .forEach { pageRepository.load(it) }
+                    val exit = (if (forward) 1f else -1f) * pageViewportWidthPx
+                    animate(initial, exit, animationSpec = tween(190)) { value, _ ->
+                        turnOffsetPx = value
+                    }
+                    page = target
+                    // Enter from the opposite hinge. Never rotate beyond 78°,
+                    // which would mirror the Arabic page during the turn.
+                    turnOffsetPx = -exit
+                    animate(-exit, 0f, animationSpec = tween(190)) { value, _ ->
+                        turnOffsetPx = value
+                    }
+                }
+            } finally {
+                turnOffsetPx = 0f
+                isTurning = false
+            }
+        }
+    }
+
+    fun cancelDragTurn() {
+        if (isTurning) return
+        turnScope.launch {
+            isTurning = true
+            try {
+                animate(turnOffsetPx, 0f, animationSpec = tween(150)) { value, _ ->
+                    turnOffsetPx = value
+                }
+            } finally {
+                turnOffsetPx = 0f
+                isTurning = false
+            }
+        }
+    }
+
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(focusRequester) { focusRequester.requestFocus() }
     LaunchedEffect(page, pageCount) {
@@ -150,6 +215,7 @@ private fun Reader(pageCount: Int) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
                 Modifier.weight(1f).fillMaxWidth()
+                    .onSizeChanged { pageViewportWidthPx = it.width.toFloat().coerceAtLeast(1f) }
                     .focusRequester(focusRequester)
                     .onPreviewKeyEvent { event ->
                         if (event.type != KeyEventType.KeyUp) {
@@ -157,15 +223,11 @@ private fun Reader(pageCount: Int) {
                         } else {
                             when (event.key) {
                                 Key.DirectionRight, Key.PageDown -> {
-                                    if (ReaderPagination.hasNext(page, pageCount, twoPageSpread)) {
-                                        page = ReaderPagination.next(page, pageCount, twoPageSpread)
-                                    }
+                                    requestPageTurn(true)
                                     true
                                 }
                                 Key.DirectionLeft, Key.PageUp -> {
-                                    if (ReaderPagination.hasPrevious(page, pageCount, twoPageSpread)) {
-                                        page = ReaderPagination.previous(page, pageCount, twoPageSpread)
-                                    }
+                                    requestPageTurn(false)
                                     true
                                 }
                                 Key.Escape -> {
@@ -181,14 +243,10 @@ private fun Reader(pageCount: Int) {
                         detectTapGestures(onTap = { offset ->
                             when (ReaderTouchRules.classify(offset.x, size.width.toFloat())) {
                                 ReaderTouchRules.Action.NEXT -> {
-                                    if (ReaderPagination.hasNext(page, pageCount, twoPageSpread)) {
-                                        page = ReaderPagination.next(page, pageCount, twoPageSpread)
-                                    }
+                                    requestPageTurn(true)
                                 }
                                 ReaderTouchRules.Action.PREVIOUS -> {
-                                    if (ReaderPagination.hasPrevious(page, pageCount, twoPageSpread)) {
-                                        page = ReaderPagination.previous(page, pageCount, twoPageSpread)
-                                    }
+                                    requestPageTurn(false)
                                 }
                                 ReaderTouchRules.Action.TOGGLE_CONTROLS -> showControls = !showControls
                                 ReaderTouchRules.Action.NONE -> Unit
@@ -196,42 +254,50 @@ private fun Reader(pageCount: Int) {
                         })
                     }
                     .pointerInput(page, twoPageSpread) {
-                    var swipeDistance = 0f
                     detectHorizontalDragGestures(
-                        onDragStart = { swipeDistance = 0f },
+                        onDragStart = { if (!isTurning) turnOffsetPx = 0f },
                         onHorizontalDrag = { change, amount ->
-                            swipeDistance += amount
+                            if (!isTurning) {
+                                turnOffsetPx = (turnOffsetPx + amount)
+                                    .coerceIn(-pageViewportWidthPx, pageViewportWidthPx)
+                            }
                             change.consume()
                         },
                         onDragEnd = {
-                            when (ReaderGestureRules.classify(swipeDistance, 64.dp.toPx())) {
-                                ReaderGestureRules.Turn.NEXT ->
-                                    if (ReaderPagination.hasNext(page, pageCount, twoPageSpread)) {
-                                        page = ReaderPagination.next(page, pageCount, twoPageSpread)
-                                    }
-                                ReaderGestureRules.Turn.PREVIOUS ->
-                                    if (ReaderPagination.hasPrevious(page, pageCount, twoPageSpread)) {
-                                        page = ReaderPagination.previous(page, pageCount, twoPageSpread)
-                                    }
-                                ReaderGestureRules.Turn.NONE -> Unit
+                            if (!isTurning) {
+                                when (ReaderGestureRules.classify(turnOffsetPx, 64.dp.toPx())) {
+                                    ReaderGestureRules.Turn.NEXT -> requestPageTurn(true)
+                                    ReaderGestureRules.Turn.PREVIOUS -> requestPageTurn(false)
+                                    ReaderGestureRules.Turn.NONE -> cancelDragTurn()
+                                }
                             }
-                            swipeDistance = 0f
                         },
-                        onDragCancel = { swipeDistance = 0f }
+                        onDragCancel = { cancelDragTurn() }
                     )
                 },
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                visible.forEach { number ->
-                    // Each navigation target has a separate Compose identity. Never
-                    // leave the previous page bitmap on screen while new art loads.
+                visible.forEachIndexed { index, number ->
+                    // Only the sheet being turned is transformed. Still pages
+                    // retain the publisher's original untransformed Quran artwork.
                     key(number) {
                         ApprovedPage(
                             number,
                             pageRepository,
                             revealFraction = if (revealActive) VisualRevealRules.fraction(revealStep) else 1f,
-                            modifier = Modifier.weight(1f).fillMaxSize()
+                            modifier = Modifier.weight(1f).fillMaxSize().graphicsLayer {
+                                val pose = ReaderPaperTurnRules.pose(turnOffsetPx, pageViewportWidthPx)
+                                if (ReaderPaperTurnRules.shouldTiltPage(
+                                        index, twoPageSpread, turnOffsetPx
+                                    )
+                                ) {
+                                    rotationY = pose.rotationDegreesY
+                                    transformOrigin = TransformOrigin(pose.pivotX, 0.5f)
+                                    cameraDistance = size.width * 6f + 1f
+                                    shadowElevation = 10.dp.toPx() * pose.elevationFraction
+                                }
+                            }
                         )
                     }
                 }
@@ -248,9 +314,14 @@ private fun Reader(pageCount: Int) {
             surahs = surahs,
             sections = sections,
             pageAnchors = pageAnchors,
-            onPrevious = { page = ReaderPagination.previous(page, pageCount, twoPageSpread) },
-            onNext = { page = ReaderPagination.next(page, pageCount, twoPageSpread) },
-            onJump = { requested -> page = ReaderPagination.clamp(requested, pageCount) },
+            onPrevious = { requestPageTurn(false) },
+            onNext = { requestPageTurn(true) },
+            onJump = { requested ->
+                if (!isTurning) {
+                    turnOffsetPx = 0f
+                    page = ReaderPagination.clamp(requested, pageCount)
+                }
+            },
                 onToggleBookmark = {
                     val updated = ReaderNavigationRules.toggleBookmark(bookmarks, page, pageCount)
                     bookmarkStore.save(updated, pageCount)
