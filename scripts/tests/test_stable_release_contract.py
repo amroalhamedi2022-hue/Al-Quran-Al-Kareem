@@ -49,5 +49,15 @@ class StableReleaseContractTests(unittest.TestCase):
     def test_old_preview_artifact_generator_is_retired(self):
         self.assertFalse((ROOT/".github/workflows/build-debug-source-preview.yml").exists())
 
+    def test_release_blocks_unreviewed_quran_before_signing(self):
+        workflow = WORKFLOW.read_text()
+        self.assertIn("No independently approved 604-page manifest", workflow)
+        self.assertIn("scripts/verify_approval_seal.py", workflow)
+        self.assertIn("scripts/verify_quran_pack.py", workflow)
+        approval_gate = workflow.index("Block signed Quran release until independent 604-page content approval")
+        signing_step = workflow.index("Sign with unchanged lifetime key")
+        self.assertLess(approval_gate, signing_step)
+        self.assertIn("exit 1", workflow[approval_gate:signing_step])
+
 if __name__ == "__main__":
     unittest.main()
