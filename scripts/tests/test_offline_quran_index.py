@@ -51,8 +51,17 @@ class OfflineQuranIndexTests(unittest.TestCase):
         self.assertEqual(pages,sorted(pages))
         self.assertTrue(all(1<=p<=604 for p in pages))
 
+    def test_all_240_rub_el_hizb_starts_match_60_hizbs(self):
+        quarter = self.sections["rub"]
+        self.assertEqual(len(quarter),240)
+        self.assertEqual([x["number"] for x in quarter],list(range(1,241)))
+        self.assertEqual(quarter[0]["page"],1)
+        self.assertEqual(quarter[-1]["page"],599)
+        self.assertEqual([x["page"] for x in quarter],sorted(x["page"] for x in quarter))
+        self.assertTrue(all(self.sections["hizb"][i]["page"]==quarter[4*i]["page"] for i in range(60)))
+
     def test_every_section_verse_is_positive_and_bounded(self):
-        for section in ("juz","hizb"):
+        for section in ("juz","hizb","rub"):
             rows=self.sections[section]
             for item in rows:
                 self.assertTrue(1<=item["surah"]<=114)
