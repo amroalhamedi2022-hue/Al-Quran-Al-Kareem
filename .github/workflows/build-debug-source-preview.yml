@@ -13,6 +13,7 @@ on:
 permissions:
   contents: read
   actions: read
+  issues: write
 jobs:
   build-preview:
     runs-on: ubuntu-latest
@@ -30,6 +31,7 @@ jobs:
           github-token: ${{ github.token }}
           path: source-original-pages
       - name: Validate 604 source images and stage original bytes without touching Quran text
+        id: stage_pages
         shell: bash
         run: |
           set -euo pipefail
@@ -60,8 +62,10 @@ jobs:
         with:
           gradle-version: '8.13'
       - name: Execute Android JVM tests then build installable separated DEBUG preview
+        id: build_apk
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
       - name: Verify actual APK contains exactly the 604 UNAPPROVED original source PNG bytes
+        id: verify_apk
         shell: bash
         run: |
           set -euo pipefail
@@ -82,6 +86,7 @@ jobs:
           cp /tmp/debug-apk-origin-proof.txt preview-evidence/ORIGINAL_604_APK_CONTENT_PROOF.txt
           echo 'UNAPPROVED DEBUG PREVIEW ONLY: Not scholarly reviewed, not a production Quran release.' > preview-evidence/README.txt
       - name: Upload testable DEBUG app and independent audit (not production)
+        id: upload_apk
         uses: actions/upload-artifact@v4
         with:
           name: Quran-604-source-verified-DEBUG-PREVIEW-not-for-publication
@@ -91,3 +96,28 @@ jobs:
           retention-days: 10
           compression-level: 0
           if-no-files-found: error
+
+      - name: Publish real build outcome and run URL to project issue
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGE_RESULT: ${{ steps.stage_pages.outcome }}
+          BUILD_RESULT: ${{ steps.build_apk.outcome }}
+          APK_AUDIT_RESULT: ${{ steps.verify_apk.outcome }}
+          ARTIFACT_RESULT: ${{ steps.upload_apk.outcome }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### 604-page Quran DEBUG preview build result"
+            echo
+            echo "- [GitHub Actions run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            echo "- Source run: ${{ inputs.source_run_id || '42828626440' }}"
+            echo "- 604 original publisher-source pages staged: **$STAGE_RESULT**"
+            echo "- Android JVM tests and offline debug APK build: **$BUILD_RESULT**"
+            echo "- All 604 embedded PNG hashes + offline permission audit: **$APK_AUDIT_RESULT**"
+            echo "- APK download artifact uploaded: **$ARTIFACT_RESULT**"
+            echo
+            echo "Development preview ONLY. No Quran text was altered or officially certified."
+          } > "$RUNNER_TEMP/debug-preview-status.md"
+          gh issue comment 17 --repo "${{ github.repository }}" --body-file "$RUNNER_TEMP/debug-preview-status.md"
