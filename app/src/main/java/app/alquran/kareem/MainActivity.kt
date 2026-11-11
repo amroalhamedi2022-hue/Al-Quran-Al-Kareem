@@ -618,7 +618,10 @@ private fun ApprovedPage(
             ) {
                 Text(
                     text = "تعذر عرض صفحة المصحف رقم $number. لن يُعرض نص بديل.",
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    // The original page always uses white paper. Dark app
+                    // chrome must never make the page error text white-on-white.
+                    color = Color(0xFF29251F)
                 )
                 Button(onClick = { retry += 1 }) { Text("إعادة المحاولة") }
             }
