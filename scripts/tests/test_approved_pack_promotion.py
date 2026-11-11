@@ -206,7 +206,9 @@ class ApprovedQuranPromotionTests(unittest.TestCase):
         (self.staged / ".approved_manifest.json.pending").write_bytes(b"stale")
         with self.assertRaisesRegex(PromotionError, "Missing/extra"):
             self.execute()
-        self.assert_still_unapproved()
+        self.assertTrue(self.report_path.exists())
+        self.assertFalse((self.staged / "approved_manifest.json").exists())
+        self.assertEqual((self.staged / ".approved_manifest.json.pending").read_bytes(), b"stale")
 
 if __name__ == "__main__":
     unittest.main()
