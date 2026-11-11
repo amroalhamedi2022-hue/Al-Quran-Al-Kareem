@@ -14,6 +14,11 @@ android {
         versionName = "0.1.0-dev"
     }
     buildTypes {
+        debug {
+            // Separately installable development reader; never upgrades a final signed app.
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-source-preview"
+        }
         release {
             isMinifyEnabled = false
         }
@@ -25,6 +30,7 @@ android {
     // Kotlin 2.3+ no longer allows the deprecated kotlinOptions.jvmtarget syntax.
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 dependencies {
