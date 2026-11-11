@@ -64,7 +64,10 @@ internal fun ReaderControls(
     var showHizb by rememberSaveable { mutableStateOf(false) }
     var indexQuery by rememberSaveable { mutableStateOf("") }
     var bookmarksVisible by rememberSaveable { mutableStateOf(false) }
-    var resetReadVisible by remembe    // The reader must remain legible on narrow phones. No sprawling 7-button row.
+    var resetReadVisible by rememberSaveable { mutableStateOf(false) }
+    var pageField by rememberSaveable { mutableStateOf("") }
+    val validJump = ReaderNavigationRules.parsePage(pageField, pageCount)
+    // The reader must remain legible on narrow phones. No sprawling 7-button row.
     val shownPages = ReaderPagination.visible(page, pageCount, twoPageSpread)
     val shownRead = shownPages.all { it in readPages }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 2.dp)) {
