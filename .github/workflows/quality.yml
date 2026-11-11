@@ -51,8 +51,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
-      - name: Compile debug scaffold (not a verified Quran release)
-        run: gradle --no-daemon :app:assembleDebug
+      - name: Compile debug and unsigned stable-release code (not distributable)
+        run: gradle --no-daemon :app:assembleDebug :app:assembleRelease
       - name: Run native reader pagination tests
         run: gradle --no-daemon :app:testDebugUnitTest
       - name: Check debug APK does not request Internet
@@ -65,3 +65,15 @@ jobs:
             exit 1
           fi
           echo "PASS: no declared network permissions in debug APK"
+      - name: Verify unsigned production package identity (still not a signed APK)
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/release/app-release-unsigned.apk
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$apk" \
+            | grep -F "package: name='app.alquran.kareem' versionCode='100' versionName='1.0.0'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$apk" > /tmp/quran-unsigned-release-permissions.txt
+          ! grep -E 'android.permission.(INTERNET|ACCESS_NETWORK_STATE|CHANGE_NETWORK_STATE|ACCESS_WIFI_STATE|NEARBY_WIFI_DEVICES)' /tmp/quran-unsigned-release-permissions.txt
+          echo "PASS: unsigned production code has permanent app ID and no network permission"
+

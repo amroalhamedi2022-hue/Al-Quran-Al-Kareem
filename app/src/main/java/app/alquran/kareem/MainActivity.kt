@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -122,12 +123,18 @@ private fun Reader(pageCount: Int) {
     var bookmarks by remember { mutableStateOf(bookmarkStore.read(pageCount)) }
     var readPages by remember { mutableStateOf(khatmaStore.read(pageCount)) }
     var showControls by rememberSaveable { mutableStateOf(true) }
+    var revealActive by rememberSaveable { mutableStateOf(false) }
+    var revealStep by rememberSaveable { mutableIntStateOf(0) }
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(focusRequester) { focusRequester.requestFocus() }
     LaunchedEffect(page, pageCount) {
         positionStore.save(page, pageCount)
     }
     val visible = ReaderPagination.visible(page, pageCount, twoPageSpread)
+    // Never infer verse boundaries: only an opt-in paper mask over immutable pixels.
+    LaunchedEffect(page, twoPageSpread) {
+        if (revealActive) revealStep = 0
+    }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
@@ -212,7 +219,8 @@ private fun Reader(pageCount: Int) {
                         ApprovedPage(
                             number,
                             pageRepository,
-                            Modifier.weight(1f).fillMaxSize()
+                            revealFraction = if (revealActive) VisualRevealRules.fraction(revealStep) else 1f,
+                            modifier = Modifier.weight(1f).fillMaxSize()
                         )
                     }
                 }
@@ -245,6 +253,16 @@ private fun Reader(pageCount: Int) {
                 khatmaStore.clear()
                 readPages = emptySet()
             },
+            revealActive = revealActive,
+            revealStep = revealStep,
+            onToggleReveal = {
+                revealActive = !revealActive
+                revealStep = 0
+                showControls = true
+            },
+            onRevealMore = { revealStep = VisualRevealRules.next(revealStep) },
+            onRevealLess = { revealStep = VisualRevealRules.previous(revealStep) },
+            onRevealAll = { revealStep = VisualRevealRules.REVEAL_STEPS },
             onHideControls = { showControls = false }
             )
         }
@@ -261,6 +279,7 @@ private sealed interface PageImageState {
 private fun ApprovedPage(
     number: Int,
     repository: QuranPageBitmapRepository,
+    revealFraction: Float = 1f,
     modifier: Modifier = Modifier
 ) {
     var retry by remember(number) { mutableIntStateOf(0) }
@@ -279,12 +298,24 @@ private fun ApprovedPage(
     Box(modifier.padding(3.dp).background(Color.White), contentAlignment = Alignment.Center) {
         when (val image = imageState) {
             is PageImageState.Loading -> CircularProgressIndicator()
-            is PageImageState.Ready -> Image(
+            is PageImageState.Ready -> Box(Modifier.fillMaxSize()) {
+                Image(
                 bitmap = image.bitmap.asImageBitmap(),
                 contentDescription = "صفحة $number من المصحف",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit
-            )
+                )
+                if (revealFraction < 1f) {
+                    // Opaque sheet conceals pixels ONLY, and is removed to reveal
+                    // the original PNG with no retyping, AI, OCR or resampling.
+                    Box(
+                        Modifier.fillMaxWidth()
+                            .fillMaxHeight((1f - revealFraction).coerceIn(0f,1f))
+                            .align(Alignment.BottomCenter)
+                            .background(Color.White)
+                    )
+                }
+            }
             is PageImageState.Failed -> Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),

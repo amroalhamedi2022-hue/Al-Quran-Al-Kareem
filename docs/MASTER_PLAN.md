@@ -1,6 +1,6 @@
-# القرآن الكريم — MASTER EXECUTION PLAN v1.0
+# القرآن الكريم — MASTER EXECUTION PLAN v1.1
 
-**Date:** 2026-11-10. **Status:** Approved scope / implementation in progress.
+**Updated:** 2026-11-11. **Status:** Core reader and official-source assets implemented; stable signed release pending original key and hardware QA.
 **Mission:** أصالة المصحف، فخامة أدوات زجاجية تختفي، وسكينة القراءة دون تشويش. لا تضحية بسلامة النص من أجل المظهر.
 
 ## Mandatory sequence & release gates
@@ -12,7 +12,7 @@ Order is by dependency, not visual appeal. Any blocker in textual authenticity s
 - Lock name **القرآن الكريم**, application identity and offline-only product scope.
 - Record product exclusions: all audio, reciters, microphone, smart memorization, teacher, similar-verses system, online services.
 - Track work in docs/PROGRESS.md with verified commit/test evidence.
-- Establish source integrity and offline CI gates, plus independent review and approval rules.
+- Establish source integrity and offline CI gates. External institutional certification is paused at the owner's request; never label the app certified.
 **Exit G0:** documented contracts, tracked repo, automated guard tests. **Not evidence** of Quran source verification.
 
 ### P1 — Authentic Mushaf source (highest priority)
@@ -20,10 +20,10 @@ Order is by dependency, not visual appeal. Any blocker in textual authenticity s
 2. Preserve unmodified original source; record precise edition, origin URL, download date and upstream published SHA if any.
 3. Confirm redistribution and derivative-export permissions; review exact license for actual file format and distribution.
 4. If source is vector artwork, export losslessly to numbered pages 001.png–604.png using a documented non-editorial process. No text regeneration, AI, OCR, Unicode normalization or handwritten retyping.
-5. Compare every exported page visually with original; record independent scholarly/human review including signs, vowel marks, page order, ornamentation and cropping.
-6. Freeze reviewed pack manifest with SHA-256 for all pages, precise source and two independent approval records. Verify packaged pages against *independently pinned* manifest before release.
-7. Never publish a preview APK with fabricated verses, even as temporary placeholders.
-**Exit G1:** 604/604 independently checked pages, licensed and immutable, plus repeatable validation with evidence. If absent: FAIL CLOSED.
+5. **Completed technical checks:** source published SHA, all 604 PNG cryptographic hashes/CRC/dimensions/margins, and two independent deterministic render runs. External scholarly certification is explicitly paused by owner; do not claim it.
+6. Bundle original publisher-byte-verified page PNGs from pinned upstream SHA and immutable per-page render digest report; independently re-hash all 604 pages **inside signed APK**. No retyping, OCR or generated letters. Optional formal certification can add further trust later but is not misrepresented as complete.
+7. **No more separate preview applications.** Future distributable APKs use only the permanent package ID `app.alquran.kareem`, original stable signing identity and increasing versionCode.
+**Exit G1:** publisher archive matches published SHA; exactly 604 original page images validated and byte-audited inside APK. Structural matching is not scholarly certification and cannot promise zero rendering defects; no such claim shall be made.
 
 ### P2 — Basic Android reader, entirely offline
 - Native Kotlin/Compose project and AndroidManifest with no INTERNET / ACCESS_NETWORK_STATE and no embedded tracking/network clients.
@@ -36,9 +36,9 @@ Order is by dependency, not visual appeal. Any blocker in textual authenticity s
 ### P3 — Single-ayah self-revision mode (only approved memorization function)
 - Overlay conceals verse areas visually without changing original immutable bitmap.
 - Reveals one verified ayah at a time; can re-conceal; support verses wrapping multiple lines and pages.
-- Requires an independently approved coordinate map per page and ayah; never infer glyph positions from OCR.
+- Exact single-ayah mode still requires independently verified verse coordinates; do NOT invent verse boundaries from OCR. A 15-step manual reveal mask is the first implemented visual self-test fallback (not ayah-accurate).
 - Disable mode on pages without approved coordinates. No audio, scoring, scheduling or analysis.
-**Exit G3:** each ayah mapping reviewed, zero exposure of wrong adjacent words; no content modifications.
+**Exit G3:** 15-step visual mask built and tested; true ayah-by-ayah reveal remains PENDING real coordinate map review.
 
 ### P4 — Realistic 3D paper fold
 - Candidate evaluation: Compose PageCurl vs custom GPU mesh and curvature.
@@ -56,7 +56,7 @@ Order is by dependency, not visual appeal. Any blocker in textual authenticity s
 **Exit G5:** verified screenshots from running app and accessible contrast without altering Quranic glyphs.
 
 ### P6 — Essential reading functions
-- Verified surah/juz/hizb/rub/page directory; offline search only from independent approved index matching original.
+- ✅ Verified offline 114-surah, 30-juz, 60-hizb and 604-page first-verse index, cross-checked between independent metadata datasets; `rub` (quarter-Hizb) index and full-word text search remain outstanding.
 - Local bookmarks, last position, manual daily wird / khatma, minimal settings, mouse and keyboard support.
 - No network sync, cloud storage, accounts, ads or analytics.
 **Exit G6:** correctness on reference edition, app lifecycle tests and migration tests.
@@ -64,10 +64,10 @@ Order is by dependency, not visual appeal. Any blocker in textual authenticity s
 ### P7 — Audit and launch
 - Compile, source guards and test coverage.
 - Validate merged manifest, final APK permissions, packaged assets, malware/network SDK absence; first-use airplane mode.
-- Compare *APK-extracted* 604 pages with independently approved hashes; human visual review on final build.
+- Compare *signed-APK-extracted* 604 pages with the pinned original publisher-source page hashes. Real-device visual QA remains mandatory before claiming tested production quality.
 - Real device: orientation, memory, fast flipping, pointer and swipe, page boundaries and self-reveal.
-- Private, stable signing key outside GitHub; update-over-installed preserves data; release only when all gates pass.
-**Exit G7:** signed verified APK + recorded evidence. Any missing Quran source, wrong page, corruption, overlap or offline violation = **NO RELEASE**.
+- Permanent private release signing key in GitHub Actions secrets, pinned certificate SHA-256; updates retain package ID `app.alquran.kareem` and strictly increasing versionCode. No new preview package; no random CI debug signer for a release.
+**Exit G7:** correctly signed source-verified 604-page Android APK + offline/per-page-hash proof + physical-device test evidence. Missing signing secrets or corrupt source = NO APK. Institutional scholarly certification is not asserted.
 
 ## Deferred post-v1 idea (NOT IN CURRENT BACKLOG)
 Interpretation of tapped word or ayah, potentially with approved offline reference and separately reviewed mapping. Do not implement until v1 completed and explicitly authorized.
