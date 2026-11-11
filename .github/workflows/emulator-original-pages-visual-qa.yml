@@ -1,0 +1,93 @@
+name: Actual original Quran artwork — Android emulator visual QA (no APK release)
+on:
+  push:
+    branches: [qa/visual-source-device-20261111]
+    paths:
+      - '.github/workflows/emulator-original-pages-visual-qa.yml'
+      - 'scripts/qa/emulator_visual_smoke.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  source-pixels-on-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pull the previously verified 604 publisher-source PNG images
+        uses: actions/download-artifact@v4
+        with:
+          name: UNAPPROVED-Hafs-604-PNG-for-human-review
+          run-id: '42828626440'
+          github-token: ${{ github.token }}
+          path: downloaded-original-pages
+      - name: Revalidate publisher images and prepare unaltered Android assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install 'Pillow==11.3.0' 'opencv-python-headless==4.11.0.86' 'numpy==1.26.4'
+          python scripts/audit_rendered_pages.py \
+            --source downloaded-original-pages \
+            --out "$RUNNER_TEMP/publisher-604-audit.json"
+          python scripts/stage_publisher_source.py \
+            --source downloaded-original-pages \
+            --destination app/src/main/assets/quran
+          test "$(find app/src/main/assets/quran -maxdepth 1 -name '*.png' | wc -l)" -eq 604
+          python scripts/verify_offline.py --manifest app/src/main/AndroidManifest.xml --sources app
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMGR="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n1)"
+          test -x "$SDKMGR"
+          "$SDKMGR" --install 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Compile internal emulator-only build with all 604 ORIGINAL pages
+        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+      - name: Verify exact original PNG bytes are embedded in built Android app
+        run: |
+          python scripts/verify_publisher_release_apk.py \
+            --apk app/build/outputs/apk/debug/app-debug.apk \
+            --source app/src/main/assets/quran
+      - name: Allow hardware-assisted Android emulator on GitHub Linux runner
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run real rendered screenshots and source-pixel comparisons on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disk-size: 6144M
+          heap-size: 512M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            QURAN_QA_SOURCE=app/src/main/assets/quran \
+              QURAN_QA_OUTPUT=qa-visual-evidence \
+              python scripts/qa/emulator_visual_smoke.py
+      - name: Publish only real device screenshots, matching report and error evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Quran-REAL-Android-emulator-visual-QA-original-page-comparisons
+          path: |
+            qa-visual-evidence/
+            ${{ runner.temp }}/publisher-604-audit.json
+          retention-days: 14
+          if-no-files-found: warn
