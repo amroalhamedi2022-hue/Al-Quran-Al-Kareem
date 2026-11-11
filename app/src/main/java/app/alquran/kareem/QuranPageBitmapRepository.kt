@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.LruCache
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -47,6 +48,8 @@ internal class QuranPageBitmapRepository(context: Context) {
                     assets.open(name).use { stream ->
                         BitmapFactory.decodeStream(stream, null, options)
                     }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled // Navigating rapidly must cancel stale image loads.
                 } catch (_: Exception) {
                     null // Fail closed; do not render replacement Quranic text.
                 } catch (_: OutOfMemoryError) {
@@ -62,6 +65,10 @@ internal class QuranPageBitmapRepository(context: Context) {
             decoded
         }
     }
+
+    /** This never loads the entire book; at most one adjacent page is warmed. */
+    fun prefetchTarget(currentPage: Int, totalPages: Int, twoPageSpread: Boolean): Int? =
+        ReaderPrefetchRules.target(currentPage, totalPages, twoPageSpread, budgetBytes)
 
     fun trim() {
         // Do not recycle evicted bitmaps; Compose can still hold a reference.
