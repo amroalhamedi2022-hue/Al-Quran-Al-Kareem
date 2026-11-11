@@ -1,6 +1,7 @@
 package app.alquran.kareem
 
 import android.content.res.AssetManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -77,6 +78,8 @@ internal object QuranAssetVerifier {
             }
             require(assets.list("quran")?.toSet() == expectedFiles) { "Missing or unexpected Quran assets" }
             Status.Approved(COUNT)
+        } catch (cancelled: CancellationException) {
+            throw cancelled // Prevent stale verification after Activity cancellation.
         } catch (_: Exception) {
             // Do not leak a half-reviewed page or fall back to any generated text.
             Status.Unavailable("ملفات المصحف المعتمدة غير مكتملة أو لم تجتز فحص السلامة.")
