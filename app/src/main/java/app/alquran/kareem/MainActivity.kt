@@ -110,12 +110,14 @@ private fun Reader(pageCount: Int, sourcePreview: Boolean = false) {
     )
     val positionStore = remember(context) { ReaderPositionStore(context) }
     val bookmarkStore = remember(context) { ReaderBookmarkStore(context) }
+    val khatmaStore = remember(context) { KhatmaProgressStore(context) }
     val pageRepository = remember(context) { QuranPageBitmapRepository(context) }
     DisposableEffect(pageRepository) {
         onDispose { pageRepository.trim() }
     }
     var page by rememberSaveable { mutableIntStateOf(positionStore.read(pageCount)) }
     var bookmarks by remember { mutableStateOf(bookmarkStore.read(pageCount)) }
+    var readPages by remember { mutableStateOf(khatmaStore.read(pageCount)) }
     var showControls by rememberSaveable { mutableStateOf(true) }
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(focusRequester) { focusRequester.requestFocus() }
@@ -230,6 +232,7 @@ private fun Reader(pageCount: Int, sourcePreview: Boolean = false) {
             pageCount = pageCount,
             twoPageSpread = twoPageSpread,
             bookmarks = bookmarks,
+            readPages = readPages,
             onPrevious = { page = ReaderPagination.previous(page, pageCount, twoPageSpread) },
             onNext = { page = ReaderPagination.next(page, pageCount, twoPageSpread) },
             onJump = { requested -> page = ReaderPagination.clamp(requested, pageCount) },
@@ -238,7 +241,16 @@ private fun Reader(pageCount: Int, sourcePreview: Boolean = false) {
                     bookmarkStore.save(updated, pageCount)
                     bookmarks = updated
                 },
-                onHideControls = { showControls = false }
+                onToggleRead = {
+                val updated = KhatmaProgressRules.toggleVisible(readPages, visible, pageCount)
+                khatmaStore.save(updated, pageCount)
+                readPages = updated
+            },
+            onResetRead = {
+                khatmaStore.clear()
+                readPages = emptySet()
+            },
+            onHideControls = { showControls = false }
             )
         }
     }
