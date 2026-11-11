@@ -3,6 +3,7 @@ package app.alquran.kareem
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
@@ -175,7 +176,24 @@ private fun Reader(pageCount: Int) {
     var turnOffsetPx by remember { mutableFloatStateOf(0f) }
     var pageViewportWidthPx by remember { mutableFloatStateOf(1f) }
     var isTurning by remember { mutableStateOf(false) }
+    var turnJob by remember { mutableStateOf<Job?>(null) }
+    val turnEpoch = remember { ReaderTransitionEpoch() }
     val turnScope = rememberCoroutineScope()
+
+    // An index jump must NEVER be silently ignored while a sheet is moving.
+    // Cancel old work and invalidate its completion callback before navigating.
+    fun interruptTurn() {
+        turnEpoch.invalidate()
+        turnJob?.cancel()
+        turnJob = null
+        isTurning = false
+        turnOffsetPx = 0f
+    }
+
+    // An orientation change invalidates the old sheet width/spread geometry.
+    LaunchedEffect(configuration.orientation, configuration.screenWidthDp) {
+        interruptTurn()
+    }
 
     fun setZoom(requested: Float) {
         zoomScale = ReaderZoomRules.normalize(requested)
@@ -205,8 +223,9 @@ private fun Reader(pageCount: Int) {
             return
         }
         val initial = turnOffsetPx
-        turnScope.launch {
-            isTurning = true
+        val currentGeneration = turnEpoch.begin()
+        isTurning = true
+        turnJob = turnScope.launch {
             try {
                 if (target == page) {
                     // Page boundary: spring the sheet back rather than crossing it.
@@ -231,8 +250,12 @@ private fun Reader(pageCount: Int) {
                     }
                 }
             } finally {
-                turnOffsetPx = 0f
-                isTurning = false
+                // A cancelled old animation cannot reset a newer direct jump.
+                if (turnEpoch.isCurrent(currentGeneration)) {
+                    turnOffsetPx = 0f
+                    isTurning = false
+                    turnJob = null
+                }
             }
         }
     }
@@ -243,15 +266,19 @@ private fun Reader(pageCount: Int) {
             turnOffsetPx = 0f
             return
         }
-        turnScope.launch {
-            isTurning = true
+        val currentGeneration = turnEpoch.begin()
+        isTurning = true
+        turnJob = turnScope.launch {
             try {
                 animate(turnOffsetPx, 0f, animationSpec = tween(150)) { value, _ ->
                     turnOffsetPx = value
                 }
             } finally {
-                turnOffsetPx = 0f
-                isTurning = false
+                if (turnEpoch.isCurrent(currentGeneration)) {
+                    turnOffsetPx = 0f
+                    isTurning = false
+                    turnJob = null
+                }
             }
         }
     }
@@ -327,6 +354,7 @@ private fun Reader(pageCount: Int) {
                     .pointerInput(page, twoPageSpread, zoomScale) {
                         detectTapGestures(
                             onDoubleTap = { tap ->
+                                if (!isTurning) {
                                 val nextZoom = ReaderZoomRules.toggleDoubleTap(zoomScale)
                                 if (!ReaderZoomRules.isZoomed(zoomScale) && twoPageSpread) {
                                     // On tablets choose the actual LEFT or RIGHT
@@ -340,6 +368,7 @@ private fun Reader(pageCount: Int) {
                                     }
                                 }
                                 setZoom(nextZoom)
+                                }
                             },
                             onTap = { offset ->
                                 if (ReaderZoomRules.isZoomed(zoomScale)) {
@@ -448,6 +477,10 @@ private fun Reader(pageCount: Int) {
                 page = page,
             pageCount = pageCount,
             twoPageSpread = twoPageSpread,
+            navigationTwoPageSpread = ReaderViewportRules.twoPageSpread(
+                configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
+                configuration.screenWidthDp
+            ),
             bookmarks = bookmarks,
             readPages = readPages,
             dailyWirdTarget = dailyWirdTarget,
@@ -462,10 +495,9 @@ private fun Reader(pageCount: Int) {
             onPrevious = { requestPageTurn(false) },
             onNext = { requestPageTurn(true) },
             onJump = { requested ->
-                if (!isTurning) {
-                    turnOffsetPx = 0f
-                    page = ReaderPagination.clamp(requested, pageCount)
-                }
+                interruptTurn()
+                setZoom(ReaderZoomRules.MIN_ZOOM)
+                page = ReaderPagination.clamp(requested, pageCount)
             },
                 onToggleBookmark = {
                     val updated = ReaderNavigationRules.toggleBookmark(bookmarks, page, pageCount)
@@ -492,9 +524,18 @@ private fun Reader(pageCount: Int) {
             onRevealLess = { revealStep = VisualRevealRules.previous(revealStep) },
             onRevealAll = { revealStep = VisualRevealRules.REVEAL_STEPS },
             zoomScale = zoomScale,
-            onZoomIn = { setZoom(ReaderZoomRules.zoomIn(zoomScale)) },
-            onZoomOut = { setZoom(ReaderZoomRules.zoomOut(zoomScale)) },
-            onZoomReset = { setZoom(ReaderZoomRules.MIN_ZOOM) },
+            onZoomIn = {
+                interruptTurn()
+                setZoom(ReaderZoomRules.zoomIn(zoomScale))
+            },
+            onZoomOut = {
+                interruptTurn()
+                setZoom(ReaderZoomRules.zoomOut(zoomScale))
+            },
+            onZoomReset = {
+                interruptTurn()
+                setZoom(ReaderZoomRules.MIN_ZOOM)
+            },
             keepScreenAwake = displaySettings.keepScreenAwake,
             reduceMotion = displaySettings.reduceMotion,
             appearance = displaySettings.appearance,
@@ -509,6 +550,7 @@ private fun Reader(pageCount: Int) {
                 displaySettings = updated
             },
             onReduceMotionChanged = { enabled ->
+                interruptTurn()
                 val updated = displaySettings.copy(reduceMotion = enabled)
                 displaySettingsStore.save(updated)
                 displaySettings = updated
@@ -576,7 +618,10 @@ private fun ApprovedPage(
             ) {
                 Text(
                     text = "تعذر عرض صفحة المصحف رقم $number. لن يُعرض نص بديل.",
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    // The original page always uses white paper. Dark app
+                    // chrome must never make the page error text white-on-white.
+                    color = Color(0xFF29251F)
                 )
                 Button(onClick = { retry += 1 }) { Text("إعادة المحاولة") }
             }
