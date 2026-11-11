@@ -29,7 +29,7 @@ Order is by dependency, not visual appeal. Any blocker in textual authenticity s
 - Native Kotlin/Compose project and AndroidManifest with no INTERNET / ACCESS_NETWORK_STATE and no embedded tracking/network clients.
 - Approved assets bundled in base APK; fresh installs must work without Wi-Fi, mobile data, accounts or downloads.
 - Portrait: single page. Landscape tablet: paired pages with correct RTL order and first/last-page handling. Display actual verified original page graphics without rewriting text.
-- Responsive image scaling without cutting diacritics. Stable navigation; adjacent-page prefetch and low-memory behavior.
+- ✅ Source-safe 100%–300% image zoom and bounded pan; double-tap restores normal text; disable page flipping while zoomed. On a landscape tablet, magnify one page and restore paired view at 100%. Stable navigation and cautious adjacent-page bitmap prefetch. Physical-device zoom testing still pending.
 - Local-only last-page persistence (with migration tests); initial source-not-approved screen is **not** Quran content.
 **Exit G2:** 604 locally accessible pages, checked layouts, consistent navigation, airplane-mode operation on devices.
 
@@ -43,21 +43,21 @@ Order is by dependency, not visual appeal. Any blocker in textual authenticity s
 ### P4 — Realistic 3D paper fold
 - Candidate evaluation: Compose PageCurl vs custom GPU mesh and curvature.
 - Interactive touch/stylus/mouse tracking, release/snap-back, paper thickness, lighting and shadows, front/back page surfaces with correct readable RTL.
-- Support reversals, rapid gestures, orientation, cancellation, motion-reduction preferences.
+- ✅ Hinge-level touch and mouse page turn, snapping and reverse gestures; persisted reduce-motion preference skips page-turn animation. Full curved paper mesh/backside and real device performance certification remain pending.
 - Preserve exact stationary approved page; never shader-transform ink in idle reading.
 - Measure jank/frame times on Xiaomi Pad 5 and representative phones; 120Hz is a test target, not a guarantee.
 **Exit G4:** real hardware footage, RTL verification, page-sequence testing, performance measurements and no glyph loss.
 
 ### P5 — Liquid Glass and immersive book
-- Tool-only glass with subtle reflection/refraction, no colored bubble halo or rectangular ripple.
+- 🟡 Tool-only translucent glass-style footer implemented below Quran image viewport (gradient, border and highlight). Full optical refraction and hardware visual QA remain pending; never alter or blur Quran glyphs.
 - Hide all controls when reading; never overlay text; faithful paper texture with safe margins.
 - Optionally Royal Dark Gold, Champagne Gold, Pearl Glass control themes; default page artwork untouched.
-- Landscape book with two pages; portrait with one; accessibility and reduce-motion.
+- Landscape book with two pages; portrait with one; ✅ local reading settings (keep-screen-awake disabled by default; reduce page-turn motion) and 1×–3× zoom; accessibility and hardware QA pending.
 **Exit G5:** verified screenshots from running app and accessible contrast without altering Quranic glyphs.
 
 ### P6 — Essential reading functions
-- ✅ Verified offline 114-surah, 30-juz, 60-hizb and 604-page first-verse index, cross-checked between independent metadata datasets; `rub` (quarter-Hizb) index and full-word text search remain outstanding.
-- Local bookmarks, last position, manual daily wird / khatma, minimal settings, mouse and keyboard support.
+- ✅ Verified offline 114-surah, 30-juz, 60-hizb, **240 quarter-Hizb** and 604-page first-verse indexes, cross-checked against independent metadata. Full-word verse text search remains outstanding and must use licensed independently verified text.
+- ✅ Local bookmarks, last position, manual khatma, screen-awake/reduce-motion settings, double-tap zoom, mouse and keyboard support. Dedicated daily wird planner and physical UI QA are still pending.
 - No network sync, cloud storage, accounts, ads or analytics.
 **Exit G6:** correctness on reference edition, app lifecycle tests and migration tests.
 
