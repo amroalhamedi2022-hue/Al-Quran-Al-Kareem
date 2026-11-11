@@ -73,7 +73,13 @@ private fun QuranApp() {
     val assets = LocalContext.current.assets
     var status by remember { mutableStateOf<QuranAssetVerifier.Status?>(null) }
     LaunchedEffect(assets) {
-        status = QuranAssetVerifier.check(assets)
+        val approved = QuranAssetVerifier.check(assets)
+        // No developer-preview images can ever be admitted by a release build.
+        status = if (BuildConfig.DEBUG && approved is QuranAssetVerifier.Status.Unavailable) {
+            QuranSourcePreviewVerifier.check(assets) ?: approved
+        } else {
+            approved
+        }
     }
     when (val verified = status) {
         null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -89,11 +95,12 @@ private fun QuranApp() {
             )
         }
         is QuranAssetVerifier.Status.Approved -> Reader(verified.pages)
+        is QuranAssetVerifier.Status.Preview -> Reader(verified.pages, sourcePreview = true)
     }
 }
 
 @Composable
-private fun Reader(pageCount: Int) {
+private fun Reader(pageCount: Int, sourcePreview: Boolean = false) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     // Two facing pages are legible on tablets, not on narrow landscape phones.
@@ -117,6 +124,17 @@ private fun Reader(pageCount: Int) {
     }
     val visible = ReaderPagination.visible(page, pageCount, twoPageSpread)
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+        if (sourcePreview) {
+            Text(
+                text = "معاينة تطويرية من المصدر الرسمي • غير مدققة للنشر",
+                color = Color(0xFF653B0F),
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.fillMaxWidth()
+                    .background(Color(0xFFFFF2DC))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                textAlign = TextAlign.Center
+            )
+        }
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
                 Modifier.weight(1f).fillMaxWidth()

@@ -16,7 +16,13 @@ class RasterAuditError(ValueError):
 
 def audit(read_bytes, listed_names, *, count=604, expected_dimensions=(1600, 2287)):
     expected = {f"{n:03d}.png" for n in range(1, count + 1)} | {"UNAPPROVED_RENDER_REPORT.json"}
-    if set(listed_names) != expected or len(listed_names) != len(expected):
+    # Human-review artifacts can contain these explicit non-Quran sidecars.
+    # The full 604 images and their source report remain strictly mandatory.
+    non_quran_sidecars = {"REVIEW_OFFLINE_UNAPPROVED.html", "TECHNICAL_AUDIT_ONLY.json",
+                          "REVIEW_LEDGER_604_UNAPPROVED.csv"}
+    names = set(listed_names)
+    if (not expected.issubset(names) or names - expected - non_quran_sidecars
+            or len(listed_names) != len(names)):
         raise RasterAuditError("Incorrect/missing/extra PNG files or duplicated archive entries")
     try:
         report = json.loads(read_bytes("UNAPPROVED_RENDER_REPORT.json"))

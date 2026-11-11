@@ -1,0 +1,93 @@
+name: Build source-hash-verified 604-page Quran DEBUG preview (NOT RELEASE)
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/build-debug-source-preview.yml']
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: 'GitHub Actions successful source render run (default 42828626440)'
+        required: false
+        default: '42828626440'
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Load original source PNGs from verified GitHub Actions render
+        uses: actions/download-artifact@v4
+        with:
+          name: UNAPPROVED-Hafs-604-PNG-for-human-review
+          run-id: ${{ inputs.source_run_id || '42828626440' }}
+          github-token: ${{ github.token }}
+          path: source-original-pages
+      - name: Validate 604 source images and stage original bytes without touching Quran text
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install 'Pillow==11.3.0'
+          python -m unittest scripts/tests/test_stage_debug_source_preview.py -v
+          python -m unittest scripts/tests/test_debug_source_preview_apk.py -v
+          python scripts/audit_rendered_pages.py \
+            --source source-original-pages \
+            --out source-original-pages-TECHNICAL_AUDIT_UNAPPROVED.json
+          python scripts/stage_debug_source_preview.py \
+            --source source-original-pages \
+            --destination app/src/main/assets/quran
+          test "$(find app/src/main/assets/quran -maxdepth 1 -name '*.png' | wc -l)" -eq 604
+      - name: Check no network code or permissions in Android sources
+        run: python scripts/verify_offline.py --manifest app/src/main/AndroidManifest.xml --sources app
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install pre-existing Android command-line SDK platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMGR="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMGR"
+          "$SDKMGR" --install 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Execute Android JVM tests then build installable separated DEBUG preview
+        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+      - name: Verify actual APK contains exactly the 604 UNAPPROVED original source PNG bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk='app/build/outputs/apk/debug/app-debug.apk'
+          test -f "$apk"
+          python scripts/verify_debug_source_preview_apk.py \
+            --apk "$apk" \
+            --source app/src/main/assets/quran \
+            | tee /tmp/debug-apk-origin-proof.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$apk" | grep "package: name='app.alquran.kareem.preview'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$apk" | tee /tmp/debug-apk-permissions.txt
+          if grep -E 'android.permission.(INTERNET|ACCESS_NETWORK_STATE|CHANGE_NETWORK_STATE|ACCESS_WIFI_STATE|NEARBY_WIFI_DEVICES)' /tmp/debug-apk-permissions.txt; then
+            echo "::error::Network permission prohibited in offline Quran preview"
+            exit 1
+          fi
+          mkdir -p preview-evidence
+          cp source-original-pages-TECHNICAL_AUDIT_UNAPPROVED.json preview-evidence/
+          cp /tmp/debug-apk-origin-proof.txt preview-evidence/ORIGINAL_604_APK_CONTENT_PROOF.txt
+          echo 'UNAPPROVED DEBUG PREVIEW ONLY: Not scholarly reviewed, not a production Quran release.' > preview-evidence/README.txt
+      - name: Upload testable DEBUG app and independent audit (not production)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Quran-604-source-verified-DEBUG-PREVIEW-not-for-publication
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            preview-evidence/
+          retention-days: 10
+          compression-level: 0
+          if-no-files-found: error
