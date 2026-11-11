@@ -37,7 +37,8 @@ internal fun ReaderControls(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onJump: (Int) -> Unit,
-    onToggleBookmark: () -> Unit
+    onToggleBookmark: () -> Unit,
+    onHideControls: () -> Unit
 ) {
     var jumpVisible by rememberSaveable { mutableStateOf(false) }
     var bookmarksVisible by rememberSaveable { mutableStateOf(false) }
@@ -73,6 +74,9 @@ internal fun ReaderControls(
             }
             TextButton(onClick = { bookmarksVisible = true }) {
                 Text("العلامات (${bookmarks.size})")
+            }
+            TextButton(onClick = onHideControls) {
+                Text("إخفاء الأدوات")
             }
         }
     }
