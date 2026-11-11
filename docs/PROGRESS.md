@@ -1,6 +1,6 @@
 # LIVE PROGRESS — القرآن الكريم
 
-**Last updated:** 2026-11-11 | **Canonical repository branch:** main.\n**Latest safety CI:** 160/160 Python tests + Android compile PASS on PR #35; independent Quran content approval and signed production APK remain PENDING.
+**Last updated:** 2026-11-11 | **Canonical repository branch:** main.\n**Latest code-quality CI:** 163/163 Python tests + Android debug/unsigned release compile + Kotlin JVM tests PASS on PR #40 (run 43111007453). Independent Quran content review and signed production APK remain PENDING.
 **Truth labels:** DOCUMENTED / IMPLEMENTED / TESTED / APPROVED / RELEASED are distinct.
 
 ## Status by workstream
