@@ -30,7 +30,7 @@ Order is by dependency, not visual appeal. Any blocker in textual authenticity s
 - Authenticated publisher-source assets bundled in signed base APK; fresh installs must work without Wi-Fi, mobile data, accounts or downloads. ✅ Startup reports progress while validating each of all 604 original image SHA-256 hashes and NEVER opens an incomplete Quran page pack.
 - Portrait: single page. Landscape tablet: paired pages with correct RTL order and first/last-page handling. Display actual verified original page graphics without rewriting text.
 - ✅ Source-safe 100%–300% image zoom **clamped to the actual fitted 1600×2287 image rectangle**, even on wide landscape tablets; double-tap magnifies the exact sheet touched in a two-page spread and returns at 100%. Leaving zoom navigates to the correct NEXT/PREVIOUS full spread; no page flipping while drag-panning. Stable neighboring-page bitmap prefetch. Physical-device touch/mouse/zoom testing still pending.
-- Local-only last-page persistence (with migration tests); initial source-not-approved screen is **not** Quran content.
+- ✅ Local-only last page/mark/bookmark stores, persistent reader palette, cancel-safe 3D navigation on direct jumps, and bounded full-res bitmap cache with Android low-memory eviction. ✅ Reader `safeDrawingPadding` keeps physical status/navigation bar insets clear. Device stress tests and migration tests remain outstanding.
 **Exit G2:** 604 locally accessible pages, checked layouts, consistent navigation, airplane-mode operation on devices.
 
 ### P3 — Single-ayah self-revision mode (only approved memorization function)
@@ -51,13 +51,13 @@ Order is by dependency, not visual appeal. Any blocker in textual authenticity s
 ### P5 — Liquid Glass and immersive book
 - 🟡 Tool-only translucent glass-style footer implemented below Quran image viewport (gradient, border and highlight). Full optical refraction and hardware visual QA remain pending; never alter or blur Quran glyphs.
 - Hide all controls when reading; never overlay text; faithful paper texture with safe margins.
-- Optionally Royal Dark Gold, Champagne Gold, Pearl Glass control themes; default page artwork untouched.
+- ✅ Pearl Glass / Champagne Gold / Royal Dark Gold **three local app chrome themes** implemented and switchable; original Quran image remains on the same white paper backing. Screenshots, hardware contrast/accessibility and true dynamic refraction not yet reviewed.
 - Landscape book with two pages; portrait with one; ✅ local reading settings (keep-screen-awake disabled by default; reduce page-turn motion) and 1×–3× zoom; accessibility and hardware QA pending.
 **Exit G5:** verified screenshots from running app and accessible contrast without altering Quranic glyphs.
 
 ### P6 — Essential reading functions
 - ✅ Verified offline 114-surah, 30-juz, 60-hizb, **240 quarter-Hizb** and 604-page first-verse indexes, cross-checked against independent metadata. Full-word verse text search remains outstanding and must use licensed independently verified text.
-- ✅ Local bookmarks, last position, manual khatma, **manual daily Wird target (1–30 pages) with next unread pages and estimated completion**, screen-awake/reduce-motion settings, double-tap zoom, mouse and keyboard support. Real Android phone/tablet UI QA is still pending.
+- ✅ Local bookmarks (including **hold either printed page to toggle exact bookmark with haptics**), last position, manual khatma, **manual daily Wird target (1–30 pages)** and next unread page navigation, screen-awake/reduce-motion and 3 chrome settings, double-tap zoom, keyboard and mouse. Real Android phone/tablet UI QA is still pending.
 - No network sync, cloud storage, accounts, ads or analytics.
 **Exit G6:** correctness on reference edition, app lifecycle tests and migration tests.
 
