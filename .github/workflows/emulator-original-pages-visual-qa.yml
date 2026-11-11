@@ -80,11 +80,7 @@ jobs:
           heap-size: 512M
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
-          script: |
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-            QURAN_QA_SOURCE=app/src/main/assets/quran \
-              QURAN_QA_OUTPUT=qa-visual-evidence \
-              python scripts/qa/emulator_visual_smoke.py
+          script: adb install -r app/build/outputs/apk/debug/app-debug.apk && python scripts/qa/emulator_visual_smoke.py
       - name: Publish only real device screenshots, matching report and error evidence
         if: always()
         uses: actions/upload-artifact@v4
