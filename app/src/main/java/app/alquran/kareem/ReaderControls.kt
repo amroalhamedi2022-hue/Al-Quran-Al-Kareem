@@ -174,13 +174,6 @@ internal fun ReaderControls(
             }
         )
     }
-   }
-            TextButton(onClick = { resetReadVisible = true }, enabled = readPages.isNotEmpty()) {
-                Text("بدء ختمة جديدة")
-            }
-        }
-    }
-
     if (resetReadVisible) {
         AlertDialog(
             onDismissRequest = { resetReadVisible = false },
