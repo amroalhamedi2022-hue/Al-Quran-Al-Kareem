@@ -1,6 +1,8 @@
 package app.alquran.kareem
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -53,6 +55,7 @@ internal fun ReaderControls(
     onRevealAll: () -> Unit,
     onHideControls: () -> Unit
 ) {
+    var toolsVisible by rememberSaveable { mutableStateOf(false) }
     var jumpVisible by rememberSaveable { mutableStateOf(false) }
     var indexVisible by rememberSaveable { mutableStateOf(false) }
     var verseVisible by rememberSaveable { mutableStateOf(false) }
@@ -61,94 +64,117 @@ internal fun ReaderControls(
     var showHizb by rememberSaveable { mutableStateOf(false) }
     var indexQuery by rememberSaveable { mutableStateOf("") }
     var bookmarksVisible by rememberSaveable { mutableStateOf(false) }
-    var resetReadVisible by rememberSaveable { mutableStateOf(false) }
-    var pageField by rememberSaveable { mutableStateOf("") }
-    val validJump = ReaderNavigationRules.parsePage(pageField, pageCount)
-
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Button(
+    var resetReadVisible by remembe    // The reader must remain legible on narrow phones. No sprawling 7-button row.
+    val shownPages = ReaderPagination.visible(page, pageCount, twoPageSpread)
+    val shownRead = shownPages.all { it in readPages }
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 2.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            TextButton(
                 onClick = onPrevious,
                 enabled = ReaderPagination.hasPrevious(page, pageCount, twoPageSpread)
             ) { Text("السابق") }
-            val visible = ReaderPagination.visible(page, pageCount, twoPageSpread)
             Text(
-                text = if (visible.size == 2) {
-                    "صفحتا ${visible[1]} و${visible[0]} / $pageCount"
-                } else "صفحة ${visible.first()} / $pageCount",
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 10.dp)
+                text = if (shownPages.size == 2) {
+                    "${shownPages.last()}–${shownPages.first()} / $pageCount"
+                } else "${shownPages.first()} / $pageCount",
+                textAlign = TextAlign.Center
             )
-            Button(
+            TextButton(
                 onClick = onNext,
                 enabled = ReaderPagination.hasNext(page, pageCount, twoPageSpread)
             ) { Text("التالي") }
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            TextButton(onClick = {
-                pageField = page.toString()
-                jumpVisible = true
-            }) { Text("انتقل لصفحة") }
-            TextButton(
-                onClick = { indexQuery = ""; indexVisible = true },
-                enabled = surahs.size == 114
-            ) { Text("فهرس السور") }
-            TextButton(
-                onClick = { verseReference = ""; verseVisible = true },
-                enabled = surahs.size == 114 && pageAnchors.size == 604
-            ) { Text("الآية") }
-            TextButton(
-                onClick = { showHizb = false; sectionsVisible = true },
-                enabled = sections.juz.size == 30 && sections.hizb.size == 60
-            ) { Text("الأجزاء والأحزاب") }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            TextButton(onClick = { toolsVisible = true }) { Text("الأدوات") }
             TextButton(onClick = onToggleBookmark) {
-                Text(if (page in bookmarks) "إزالة العلامة" else "وضع علامة")
+                Text(if (page in bookmarks) "★ محفوظة" else "☆ علامة")
             }
-            TextButton(onClick = { bookmarksVisible = true }) {
-                Text("العلامات (${bookmarks.size})")
-            }
-            TextButton(onClick = onHideControls) {
-                Text("إخفاء الأدوات")
-            }
+            TextButton(onClick = onHideControls) { Text("إخفاء") }
         }
-        val shownPages = ReaderPagination.visible(page, pageCount, twoPageSpread)
-        val shownRead = shownPages.all { it in readPages }
-        Text(
-            text = "الختمة اليدوية: ${readPages.size} من $pageCount صفحة",
-            modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)
-        )
         LinearProgressIndicator(
             progress = { KhatmaProgressRules.fraction(readPages, pageCount) },
             modifier = Modifier.fillMaxWidth()
         )
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            TextButton(onClick = onToggleReveal) {
-                Text(if (revealActive) "إنهاء التسميع البصري" else "التسميع البصري")
-            }
-            if (revealActive) {
-                TextButton(onClick = onRevealLess, enabled = revealStep > 0) {
-                    Text("إخفاء خطوة")
-                }
-                TextButton(
-                    onClick = onRevealMore,
-                    enabled = revealStep < VisualRevealRules.REVEAL_STEPS
-                ) { Text("كشف خطوة") }
-                TextButton(
-                    onClick = onRevealAll,
-                    enabled = revealStep < VisualRevealRules.REVEAL_STEPS
-                ) { Text("كشف الكل") }
-            }
-        }
-        if (revealActive) {
-            Text(
-                "كشف الصفحة تدريجيًا: $revealStep من 15. هذه خطوات بصرية لا تمثل حدود الآيات."
-            )
-        }
+    }
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onToggleRead) {
-                Text(if (shownRead) "إلغاء تعليم المعروض" else "قرأت الصفحات المعروضة")
+    if (toolsVisible) {
+        AlertDialog(
+            onDismissRequest = { toolsVisible = false },
+            title = { Text("أدوات القرآن الكريم") },
+            text = {
+                Column(
+                    modifier = Modifier.heightIn(max = 440.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text("التنقل والفهارس")
+                    TextButton(onClick = {
+                        toolsVisible = false
+                        pageField = page.toString()
+                        jumpVisible = true
+                    }) { Text("الانتقال إلى صفحة") }
+                    TextButton(
+                        onClick = { toolsVisible = false; indexQuery = ""; indexVisible = true },
+                        enabled = surahs.size == 114
+                    ) { Text("فهرس السور (114)") }
+                    TextButton(
+                        onClick = { toolsVisible = false; showHizb = false; sectionsVisible = true },
+                        enabled = sections.juz.size == 30 && sections.hizb.size == 60
+                    ) { Text("الأجزاء والأحزاب") }
+                    TextButton(
+                        onClick = { toolsVisible = false; verseReference = ""; verseVisible = true },
+                        enabled = surahs.size == 114 && pageAnchors.size == 604
+                    ) { Text("الانتقال إلى آية") }
+                    TextButton(onClick = {
+                        toolsVisible = false
+                        bookmarksVisible = true
+                    }) { Text("العلامات المرجعية (${bookmarks.size})") }
+
+                    Text("الختمة — ${readPages.size} من $pageCount صفحة")
+                    TextButton(onClick = onToggleRead) {
+                        Text(if (shownRead) "إلغاء تعليم الصفحات المقروءة"
+                            else "قرأت الصفحات المعروضة")
+                    }
+                    TextButton(
+                        onClick = { toolsVisible = false; resetReadVisible = true },
+                        enabled = readPages.isNotEmpty()
+                    ) { Text("بدء ختمة جديدة") }
+
+                    Text("التسميع الذاتي البصري")
+                    TextButton(onClick = onToggleReveal) {
+                        Text(if (revealActive) "إنهاء التسميع" else "ابدأ التسميع")
+                    }
+                    if (revealActive) {
+                        Text("الكشف التدريجي $revealStep من 15 — ليس بحسب حدود الآيات")
+                        Row(horizontalArrangement = Arrangement.SpaceEvenly) {
+                            TextButton(
+                                onClick = onRevealLess,
+                                enabled = revealStep > 0
+                            ) { Text("إخفاء") }
+                            TextButton(
+                                onClick = onRevealMore,
+                                enabled = revealStep < VisualRevealRules.REVEAL_STEPS
+                            ) { Text("كشف") }
+                            TextButton(
+                                onClick = onRevealAll,
+                                enabled = revealStep < VisualRevealRules.REVEAL_STEPS
+                            ) { Text("الكل") }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { toolsVisible = false }) { Text("إغلاق") }
             }
+        )
+    }
+   }
             TextButton(onClick = { resetReadVisible = true }, enabled = readPages.isNotEmpty()) {
                 Text("بدء ختمة جديدة")
             }
