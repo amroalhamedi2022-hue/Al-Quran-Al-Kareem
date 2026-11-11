@@ -4,14 +4,14 @@
 
 ## Trust boundaries
 - Source of truth: a verified, identified official Hafs/Madinah 604-page edition with documented redistribution terms.
-- Original vendor assets are stored unchanged and hashed externally. Rendering uses only independently reviewed page exports, never AI text/OCR/retyped Quran.
-- The *page pack's* approved manifest lists 001.png through 604.png, source URL, riwaya, layout, rights review, two distinct human approvers and SHA-256 for each PNG.
-- A generated manifest alone is NOT an attestation. Independent human check + separately pinned source checksum + signoff needed.
-- All 604 pages reviewed before release; no gradients, negative filters or recoloring ink in baseline. Glass/mesh are applied outside the glyph content except geometric movement during turn.
+- Original vendor assets are unchanged and hashed externally; Android uses full byte-for-byte verified source PNGs, never AI/OCR/retyped Quran.
+- The source-provenance manifest lists 001.png through 604.png and every PNG SHA-256; the upstream ZIP must match the published publisher SHA-256. Packaging and runtime re-hash all 604 PNGs. Do not describe this metadata as a scholarly approval.
+- The published upstream archive checksum and complete PNG checks are non-negotiable. External institutional certification has been paused at the owner's request. Byte matching proves fidelity to those exported files, not infallibility of their graphical conversion.
+- All 604 pages are machine-audited for source/order/hash/borders, but NOT officially certified for letter-by-letter correctness; do not promise zero graphic defects. No gradients, negative filters or recoloring of Quran ink in idle reading.
 - The page-curl backside is the appropriate source page, not mirrored Arabic text.
-- Self-reveal: approved verse coordinates only; overlay hides/shows but never edits original pixels. Disable if unavailable.
-- Hash check at startup is defense-in-depth; APK signature and independent reference provide provenance.
-- Final release verifies *actual APK contents*, not just source files. No partial Quran accepted.
+- Self-reveal: 15-step non-semantic paper mask hides/shows original bitmap without edits. Exact verse-by-verse mode remains disabled until reliable independently verified verse coordinates exist.
+- Hash check at startup is defense-in-depth; original archive SHA-256 and a stable Android release signature provide technical provenance (not a religious certificate).
+- Final signed release must verify *actual APK contents*, not just source files. No partial Quran accepted; same package ID and signer required for every update.
 - Fail closed: if any file is missing/tampered, show explicit "المصحف غير متاح" state. Do not silently replace with any text.
 
 ## Manual signoff checklist
