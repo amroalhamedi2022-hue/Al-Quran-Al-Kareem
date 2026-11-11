@@ -1,0 +1,137 @@
+name: Quran — stable signed Android update (official-source bytes)
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: 'Successful official 604-page publisher-source conversion GitHub Actions run'
+        required: false
+        default: '42828626440'
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: quran-signed-update
+  cancel-in-progress: false
+jobs:
+  signed-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Require established private release signing identity
+        shell: bash
+        env:
+          KEY_B64: ${{ secrets.QURAN_RELEASE_KEYSTORE_B64 }}
+          STORE_PASS: ${{ secrets.QURAN_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.QURAN_RELEASE_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.QURAN_RELEASE_KEY_PASSWORD }}
+          CERT_SHA256: ${{ secrets.QURAN_RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          for item in KEY_B64 STORE_PASS KEY_ALIAS KEY_PASS CERT_SHA256; do
+            if [ -z "${!item}" ]; then
+              echo "::error::Missing private signing secret $item. Refusing to issue an unstable or debug-signed APK."
+              exit 1
+            fi
+          done
+          if ! [[ "$CERT_SHA256" =~ ^[0-9a-fA-F]{64}$ ]]; then
+            echo "::error::Release signing certificate SHA-256 must be a complete 64-character hex digest."
+            exit 1
+          fi
+      - name: Download original publisher-source 604 PNGs (technical provenance)
+        uses: actions/download-artifact@v4
+        with:
+          name: UNAPPROVED-Hafs-604-PNG-for-human-review
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/publisher-artwork
+      - name: Verify all 604 original publisher PNG bytes before assembly
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install 'Pillow==11.3.0'
+          python -m unittest discover -s scripts/tests -v
+          python scripts/audit_rendered_pages.py \
+            --source "$RUNNER_TEMP/publisher-artwork" \
+            --out "$RUNNER_TEMP/publisher-source-audit.json"
+          python scripts/stage_publisher_source.py \
+            --source "$RUNNER_TEMP/publisher-artwork" \
+            --destination app/src/main/assets/quran
+          test "$(find app/src/main/assets/quran -maxdepth 1 -name '*.png' | wc -l)" -eq 604
+          python scripts/verify_offline.py --manifest app/src/main/AndroidManifest.xml --sources app
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install required Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMGR="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMGR"
+          "$SDKMGR" --install 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Test and assemble stable production package
+        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleRelease
+      - name: Sign with unchanged lifetime key, align and verify certificate identity
+        shell: bash
+        env:
+          KEY_B64: ${{ secrets.QURAN_RELEASE_KEYSTORE_B64 }}
+          STORE_PASS: ${{ secrets.QURAN_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.QURAN_RELEASE_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.QURAN_RELEASE_KEY_PASSWORD }}
+          CERT_SHA256: ${{ secrets.QURAN_RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/quran-signing"
+          mkdir -m 700 -p "$work" release-output
+          trap 'rm -rf "$work"' EXIT
+          printf '%s' "$KEY_B64" | base64 --decode > "$work/original-release.jks"
+          chmod 600 "$work/original-release.jks"
+          input='app/build/outputs/apk/release/app-release-unsigned.apk'
+          test -s "$input"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -p -f 4 "$input" "$work/aligned.apk"
+          output='release-output/Al-Quran-Al-Kareem-v1.0.0.apk'
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
+            --ks "$work/original-release.jks" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass env:STORE_PASS \
+            --key-pass env:KEY_PASS \
+            --out "$output" "$work/aligned.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$output" \
+            | tee "$work/signing-report.txt"
+          actual="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$work/signing-report.txt" | tr 'A-F' 'a-f')"
+          expected="$(printf '%s' "$CERT_SHA256" | tr 'A-F' 'a-f')"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Release certificate changed. Cannot update existing installed app."
+            exit 1
+          fi
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$output" \
+            | grep -F "package: name='app.alquran.kareem' versionCode='100' versionName='1.0.0'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$output" \
+            | tee "$work/permissions.txt"
+          if grep -E 'android.permission.(INTERNET|ACCESS_NETWORK_STATE|CHANGE_NETWORK_STATE|ACCESS_WIFI_STATE|NEARBY_WIFI_DEVICES)' "$work/permissions.txt"; then
+            echo "::error::Network permission in offline Quran APK"
+            exit 1
+          fi
+          python scripts/verify_publisher_release_apk.py \
+            --apk "$output" \
+            --source app/src/main/assets/quran \
+            | tee release-output/publisher-source-byte-proof.json
+          echo "$actual" > release-output/release-signing-cert-sha256.txt
+          sha256sum "$output" > release-output/Al-Quran-Al-Kareem-v1.0.0.apk.sha256
+          echo 'Original source is publisher-authenticated by archive SHA and 604 PNG hashes; no separate institutional certificate is claimed.' > release-output/SOURCE_NOTE.txt
+      - name: Upload only signed, verified and installable update
+        uses: actions/upload-artifact@v4
+        with:
+          name: Al-Quran-Al-Kareem-v1.0.0-SIGNED-OFFLINE
+          path: release-output/
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
