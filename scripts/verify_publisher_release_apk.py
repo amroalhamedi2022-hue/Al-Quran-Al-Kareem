@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Audit the signed release APK's embedded verified original publisher artwork.
+"""Audit signed APK Quran page bytes against source-staged publisher artwork.
 
-Matches PNG bytes and conversion report against the staged SHA-checked source.
-Never grants human certification or final-release permission.
+Technical byte integrity only; not human scholarly certification or release approval.
 """
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 from zipfile import ZipFile, BadZipFile
+
+OFFICIAL_HAFS_ARCHIVE_SHA256 = "280c5d71ca16aaeeb3a343be1b92c76fa6df71d0671e202c026fde12402d9eef"
+PNG_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 
 class PublisherApkError(ValueError):
     pass
@@ -17,9 +20,14 @@ def audit_publisher_apk(apk: Path, source: Path, count=604):
     try:
         report_raw = (source / "source_provenance_manifest.json").read_bytes()
         manifest = json.loads(report_raw)
-        pages = manifest["pages"]
-        if manifest.get("status") != "UNAPPROVED_RENDER_ONLY" or manifest.get("page_count") != count or len(pages) != count:
-            raise PublisherApkError("Missing or falsely approved development source report")
+        if not isinstance(manifest, dict):
+            raise PublisherApkError("Invalid source manifest structure")
+        pages = manifest.get("pages")
+        if (manifest.get("status") != "UNAPPROVED_RENDER_ONLY"
+                or manifest.get("source_sha256") != OFFICIAL_HAFS_ARCHIVE_SHA256
+                or manifest.get("page_count") != count
+                or not isinstance(pages, list) or len(pages) != count):
+            raise PublisherApkError("Missing, unpinned or falsely approved source report")
         with ZipFile(apk) as zipfile:
             actual = zipfile.namelist()
             embedded = {x for x in actual if x.startswith("assets/quran/") and not x.endswith("/")}
@@ -32,17 +40,24 @@ def audit_publisher_apk(apk: Path, source: Path, count=604):
             seen=set()
             for n,row in enumerate(pages,1):
                 filename=f"{n:03d}.png"
-                if row.get("page")!=n or row.get("file")!=filename or row.get("review_status")!="PENDING":
-                    raise PublisherApkError(f"Untrusted source page mapping: {n}")
+                if (not isinstance(row, dict)
+                        or row.get("page") != n or row.get("file") != filename
+                        or row.get("review_status") != "PENDING"
+                        or (row.get("width"), row.get("height")) != (1600, 2287)):
+                    raise PublisherApkError(f"Untrusted source page mapping/dimensions: {n}")
                 sha=row.get("sha256")
-                if not isinstance(sha,str) or sha in seen:
-                    raise PublisherApkError(f"Missing/duplicate source digest at {n}")
+                if not isinstance(sha,str) or not PNG_SHA256.fullmatch(sha) or sha in seen:
+                    raise PublisherApkError(f"Invalid/duplicate source digest at {n}")
                 seen.add(sha)
                 raw=zipfile.read(f"assets/quran/{filename}")
                 if hashlib.sha256(raw).hexdigest()!=sha:
                     raise PublisherApkError(f"Unexpected APK pixel bytes at {n}")
-                if hashlib.sha256((source/filename).read_bytes()).hexdigest()!=sha:
-                    raise PublisherApkError(f"Unexpected staged page at {n}")
+                original = source / filename
+                if original.is_symlink() or not original.is_file():
+                    raise PublisherApkError(f"Source page missing or symlinked: {n}")
+                with original.open("rb") as stream:
+                    if hashlib.file_digest(stream, "sha256").hexdigest()!=sha:
+                        raise PublisherApkError(f"Unexpected staged page at {n}")
         return {"status":"PUBLISHER_ORIGINAL_BYTES_EXACT_APK",
                 "pages_checked":count,"source_integrity_verified":True,
                 "institutional_certification":False}
