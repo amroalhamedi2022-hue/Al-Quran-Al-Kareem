@@ -237,8 +237,9 @@ private fun Reader(pageCount: Int) {
                 }
             }
         }
-        AnimatedVisibility(visible = showControls) {
-            ReaderControls(
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            AnimatedVisibility(visible = showControls) {
+                ReaderControls(
                 page = page,
             pageCount = pageCount,
             twoPageSpread = twoPageSpread,
@@ -275,7 +276,8 @@ private fun Reader(pageCount: Int) {
             onRevealLess = { revealStep = VisualRevealRules.previous(revealStep) },
             onRevealAll = { revealStep = VisualRevealRules.REVEAL_STEPS },
             onHideControls = { showControls = false }
-            )
+                )
+            }
         }
     }
 }
