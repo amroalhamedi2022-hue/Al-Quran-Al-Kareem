@@ -8,6 +8,8 @@ import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clipToBounds
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -112,11 +114,16 @@ private fun QuranApp() {
 private fun Reader(pageCount: Int) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
-    // Two facing pages are legible on tablets, not on narrow landscape phones.
+    // Zoom uses one page at a time to prevent magnified pages overlapping
+    // the neighbor on tablets. The original image is intact at 100%.
+    var zoomScale by rememberSaveable { mutableFloatStateOf(ReaderZoomRules.MIN_ZOOM) }
+    var zoomPanX by remember { mutableFloatStateOf(0f) }
+    var zoomPanY by remember { mutableFloatStateOf(0f) }
+    var pageViewportHeightPx by remember { mutableFloatStateOf(1f) }
     val twoPageSpread = ReaderViewportRules.twoPageSpread(
         configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
         configuration.screenWidthDp
-    )
+    ) && !ReaderZoomRules.isZoomed(zoomScale)
     val positionStore = remember(context) { ReaderPositionStore(context) }
     val bookmarkStore = remember(context) { ReaderBookmarkStore(context) }
     val khatmaStore = remember(context) { KhatmaProgressStore(context) }
@@ -139,7 +146,20 @@ private fun Reader(pageCount: Int) {
     var isTurning by remember { mutableStateOf(false) }
     val turnScope = rememberCoroutineScope()
 
+    fun setZoom(requested: Float) {
+        zoomScale = ReaderZoomRules.normalize(requested)
+        val safe = ReaderZoomRules.clampPan(
+            zoomPanX, zoomPanY,
+            pageViewportWidthPx, pageViewportHeightPx, zoomScale
+        )
+        zoomPanX = safe.x
+        zoomPanY = safe.y
+    }
+
     fun requestPageTurn(forward: Boolean) {
+        // Leave the magnifier before navigating, never keep a zoom/pan transform
+        // attached to a DIFFERENT numbered Quran page.
+        if (ReaderZoomRules.isZoomed(zoomScale)) setZoom(1f)
         if (isTurning) return
         val target = if (forward) ReaderPagination.next(page, pageCount, twoPageSpread)
             else ReaderPagination.previous(page, pageCount, twoPageSpread)
@@ -195,6 +215,7 @@ private fun Reader(pageCount: Int) {
     LaunchedEffect(focusRequester) { focusRequester.requestFocus() }
     LaunchedEffect(page, pageCount) {
         positionStore.save(page, pageCount)
+        setZoom(1f)
     }
     // Warm only a verified neighboring image, and only on devices with enough
     // heap for the currently visible full-size pages plus one more bitmap.
@@ -215,7 +236,17 @@ private fun Reader(pageCount: Int) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
                 Modifier.weight(1f).fillMaxWidth()
-                    .onSizeChanged { pageViewportWidthPx = it.width.toFloat().coerceAtLeast(1f) }
+                    // Keep a magnified image away from navigation controls.
+                    .clipToBounds()
+                    .onSizeChanged {
+                        pageViewportWidthPx = it.width.toFloat().coerceAtLeast(1f)
+                        pageViewportHeightPx = it.height.toFloat().coerceAtLeast(1f)
+                        val safe = ReaderZoomRules.clampPan(
+                            zoomPanX, zoomPanY, pageViewportWidthPx, pageViewportHeightPx, zoomScale
+                        )
+                        zoomPanX = safe.x
+                        zoomPanY = safe.y
+                    }
                     .focusRequester(focusRequester)
                     .onPreviewKeyEvent { event ->
                         if (event.type != KeyEventType.KeyUp) {
@@ -239,22 +270,29 @@ private fun Reader(pageCount: Int) {
                         }
                     }
                     .focusable()
-                    .pointerInput(page, twoPageSpread) {
-                        detectTapGestures(onTap = { offset ->
-                            when (ReaderTouchRules.classify(offset.x, size.width.toFloat())) {
-                                ReaderTouchRules.Action.NEXT -> {
-                                    requestPageTurn(true)
+                    .pointerInput(page, twoPageSpread, zoomScale) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                setZoom(ReaderZoomRules.toggleDoubleTap(zoomScale))
+                            },
+                            onTap = { offset ->
+                                if (ReaderZoomRules.isZoomed(zoomScale)) {
+                                    // No accidental page turns while magnifying the Quran.
+                                    showControls = !showControls
+                                } else {
+                                    when (ReaderTouchRules.classify(offset.x, size.width.toFloat())) {
+                                        ReaderTouchRules.Action.NEXT -> requestPageTurn(true)
+                                        ReaderTouchRules.Action.PREVIOUS -> requestPageTurn(false)
+                                        ReaderTouchRules.Action.TOGGLE_CONTROLS ->
+                                            showControls = !showControls
+                                        ReaderTouchRules.Action.NONE -> Unit
+                                    }
                                 }
-                                ReaderTouchRules.Action.PREVIOUS -> {
-                                    requestPageTurn(false)
-                                }
-                                ReaderTouchRules.Action.TOGGLE_CONTROLS -> showControls = !showControls
-                                ReaderTouchRules.Action.NONE -> Unit
                             }
-                        })
+                        )
                     }
-                    .pointerInput(page, twoPageSpread) {
-                    detectHorizontalDragGestures(
+                    .pointerInput(page, twoPageSpread, zoomScale) {
+                    if (!ReaderZoomRules.isZoomed(zoomScale)) detectHorizontalDragGestures(
                         onDragStart = { if (!isTurning) turnOffsetPx = 0f },
                         onHorizontalDrag = { change, amount ->
                             if (!isTurning) {
@@ -286,7 +324,30 @@ private fun Reader(pageCount: Int) {
                             number,
                             pageRepository,
                             revealFraction = if (revealActive) VisualRevealRules.fraction(revealStep) else 1f,
-                            modifier = Modifier.weight(1f).fillMaxSize().graphicsLayer {
+                            modifier = Modifier.weight(1f).fillMaxSize()
+                                .pointerInput(number, zoomScale) {
+                                    if (ReaderZoomRules.isZoomed(zoomScale)) {
+                                        detectDragGestures { change, offset ->
+                                            change.consume()
+                                            val moved = ReaderZoomRules.clampPan(
+                                                zoomPanX + offset.x,
+                                                zoomPanY + offset.y,
+                                                pageViewportWidthPx,
+                                                pageViewportHeightPx,
+                                                zoomScale
+                                            )
+                                            zoomPanX = moved.x
+                                            zoomPanY = moved.y
+                                        }
+                                    }
+                                }
+                                .graphicsLayer {
+                                    scaleX = zoomScale
+                                    scaleY = zoomScale
+                                    translationX = zoomPanX
+                                    translationY = zoomPanY
+                                }
+                                .graphicsLayer {
                                 val pose = ReaderPaperTurnRules.pose(turnOffsetPx, pageViewportWidthPx)
                                 if (ReaderPaperTurnRules.shouldTiltPage(
                                         index, twoPageSpread, turnOffsetPx
@@ -346,6 +407,10 @@ private fun Reader(pageCount: Int) {
             onRevealMore = { revealStep = VisualRevealRules.next(revealStep) },
             onRevealLess = { revealStep = VisualRevealRules.previous(revealStep) },
             onRevealAll = { revealStep = VisualRevealRules.REVEAL_STEPS },
+            zoomScale = zoomScale,
+            onZoomIn = { setZoom(ReaderZoomRules.zoomIn(zoomScale)) },
+            onZoomOut = { setZoom(ReaderZoomRules.zoomOut(zoomScale)) },
+            onZoomReset = { setZoom(ReaderZoomRules.MIN_ZOOM) },
             onHideControls = { showControls = false }
                 )
             }
