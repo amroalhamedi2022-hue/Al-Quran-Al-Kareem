@@ -22,15 +22,31 @@ internal object ReaderZoomRules {
     fun toggleDoubleTap(scale: Float): Float =
         if (isZoomed(scale)) MIN_ZOOM else 2f
 
+    /**
+     * The source page is displayed with ContentScale.Fit, not FillBounds.
+     * Its painted rectangle can be significantly narrower than the viewport
+     * in landscape. Panning against full viewport dimensions used to expose
+     * large empty areas, which was especially noticeable on a tablet.
+     */
     fun clampPan(
         x: Float, y: Float, viewportWidthPx: Float, viewportHeightPx: Float, scale: Float
     ): Pan {
         val safeScale = normalize(scale)
-        if (safeScale == MIN_ZOOM || !viewportWidthPx.isFinite() ||
-            !viewportHeightPx.isFinite() || viewportWidthPx <= 0f || viewportHeightPx <= 0f
+        if (safeScale == MIN_ZOOM ||
+            !viewportWidthPx.isFinite() || !viewportHeightPx.isFinite() ||
+            viewportWidthPx <= 0f || viewportHeightPx <= 0f
         ) return Pan(0f, 0f)
-        val maxX = viewportWidthPx * (safeScale - 1f) / 2f
-        val maxY = viewportHeightPx * (safeScale - 1f) / 2f
+
+        val sourceWidth = QuranPageCachePolicy.PAGE_WIDTH.toFloat()
+        val sourceHeight = QuranPageCachePolicy.PAGE_HEIGHT.toFloat()
+        val fit = minOf(viewportWidthPx / sourceWidth, viewportHeightPx / sourceHeight)
+        val displayedWidth = sourceWidth * fit * safeScale
+        val displayedHeight = sourceHeight * fit * safeScale
+
+        // If even the zoomed page is smaller than the available viewport along
+        // an axis, its centered image must not slide away from that center.
+        val maxX = ((displayedWidth - viewportWidthPx) / 2f).coerceAtLeast(0f)
+        val maxY = ((displayedHeight - viewportHeightPx) / 2f).coerceAtLeast(0f)
         return Pan(
             if (x.isFinite()) x.coerceIn(-maxX, maxX) else 0f,
             if (y.isFinite()) y.coerceIn(-maxY, maxY) else 0f
