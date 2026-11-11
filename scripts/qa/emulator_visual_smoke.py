@@ -43,19 +43,24 @@ def tablet_settings():
     # rather than guessed from density or simulated screen width.
     adb("shell","settings","put","system","user_rotation","0")
 
-def start_reader(timeout_seconds=540):
+def start_reader(timeout_seconds=480):
     adb("shell","am","force-stop",PKG)
     adb("shell","am","start","-n",PKG+"/.MainActivity")
     deadline=time.monotonic()+timeout_seconds
+    last_error="no artwork captured yet"
+    # Android UIAutomator may fail to emit a view-tree file for Compose while
+    # hashing all 604 pages. Check ACTUAL rendered pixels instead of UI XML.
     while time.monotonic()<deadline:
-        adb("shell","uiautomator","dump","/sdcard/quran-qa-view.xml",timeout=40)
-        xml=adb("shell","cat","/sdcard/quran-qa-view.xml").decode("utf8","replace")
-        if "التالي" in xml and "السابق" in xml:
-            return xml
-        if "ملفات المصحف المعتمدة غير مكتملة" in xml:
-            raise RuntimeError("App rejected a supposedly valid 604-page source pack")
-        time.sleep(8)
-    raise RuntimeError("Real 604-page integrity check never displayed readable Quran toolbar")
+        time.sleep(7)
+        probe=screenshot("reader-startup-probe")
+        try:
+            evidence=compare_source_pixels(1,probe,"real-publisher-page-1-visible")
+            print("PASS reader visibly rendered first original Quran page:",evidence,flush=True)
+            return
+        except (AssertionError, RuntimeError, ValueError) as error:
+            last_error=str(error)
+            print("Reader startup evidence not ready:",last_error[:200],flush=True)
+    raise RuntimeError("Reader never visibly rendered original Quran source page: "+last_error)
 
 def screenshot(label):
     path=OUT/(label+".png")
