@@ -79,6 +79,25 @@ jobs:
           gradle-version: '8.13'
       - name: Test and assemble stable production package
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleRelease
+      # The renderer output is explicitly UNAPPROVED_RENDER_ONLY.
+      # A publisher checksum and 604 page hashes do NOT prove Quran text review.
+      # Until an independently reviewed 604-page manifest is installed and
+      # pinned, the release must stop BEFORE any signed APK can be created.
+      - name: Block signed Quran release until independent 604-page content approval
+        shell: bash
+        run: |
+          set -euo pipefail
+          approved=app/src/main/assets/quran/approved_manifest.json
+          if [ ! -f "$approved" ]; then
+            echo "::error::No independently approved 604-page manifest; publisher-byte verification alone is insufficient for a signed Quran release."
+            exit 1
+          fi
+          python scripts/verify_approval_seal.py \
+            --kotlin app/src/main/java/app/alquran/kareem/QuranAssetVerifier.kt \
+            --manifest "$approved"
+          python scripts/verify_quran_pack.py \
+            --pages app/src/main/assets/quran \
+            --manifest "$approved"
       - name: Sign with unchanged lifetime key, align and verify certificate identity
         shell: bash
         env:
