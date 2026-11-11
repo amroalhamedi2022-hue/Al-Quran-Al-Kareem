@@ -147,6 +147,10 @@ private fun Reader(pageCount: Int) {
         onDispose { pageRepository.trim() }
     }
     var page by rememberSaveable { mutableIntStateOf(positionStore.read(pageCount)) }
+    // A landscape double-tap on the LEFT sheet may change the selected
+    // numbered page while entering zoom. Don't immediately cancel that zoom
+    // through the ordinary LaunchedEffect(page) navigation reset.
+    var incomingMagnifierPage by remember { mutableIntStateOf(0) }
     var bookmarks by remember { mutableStateOf(bookmarkStore.read(pageCount)) }
     var readPages by remember { mutableStateOf(khatmaStore.read(pageCount)) }
     var dailyWirdTarget by remember { mutableIntStateOf(dailyWirdStore.readTarget()) }
@@ -241,7 +245,13 @@ private fun Reader(pageCount: Int) {
     LaunchedEffect(focusRequester) { focusRequester.requestFocus() }
     LaunchedEffect(page, pageCount) {
         positionStore.save(page, pageCount)
-        setZoom(1f)
+        if (incomingMagnifierPage == page) {
+            // Only the explicit page selection from a two-page double-tap
+            // should preserve the requested magnification.
+            incomingMagnifierPage = 0
+        } else {
+            setZoom(1f)
+        }
     }
     // Warm only a verified neighboring image, and only on devices with enough
     // heap for the currently visible full-size pages plus one more bitmap.
@@ -300,8 +310,20 @@ private fun Reader(pageCount: Int) {
                     .focusable()
                     .pointerInput(page, twoPageSpread, zoomScale) {
                         detectTapGestures(
-                            onDoubleTap = {
-                                setZoom(ReaderZoomRules.toggleDoubleTap(zoomScale))
+                            onDoubleTap = { tap ->
+                                val nextZoom = ReaderZoomRules.toggleDoubleTap(zoomScale)
+                                if (!ReaderZoomRules.isZoomed(zoomScale) && twoPageSpread) {
+                                    // On tablets choose the actual LEFT or RIGHT
+                                    // source image underneath this tap.
+                                    val selected = ReaderSpreadTapRules.tappedPage(
+                                        tap.x, size.width.toFloat(), visible
+                                    )
+                                    if (selected != null && selected != page) {
+                                        incomingMagnifierPage = selected
+                                        page = selected
+                                    }
+                                }
+                                setZoom(nextZoom)
                             },
                             onTap = { offset ->
                                 if (ReaderZoomRules.isZoomed(zoomScale)) {
