@@ -30,7 +30,7 @@ internal object QuranPublisherSourceVerifier {
                 require(metadata.getInt("page_count") == 604)
                 val pages = metadata.getJSONArray("pages")
                 require(pages.length() == 604)
-                val wantedFiles = mutableSetOf(PREVIEW_MANIFEST)
+                val wantedFiles = mutableSetOf(SOURCE_MANIFEST)
                 val foundDigests = mutableSetOf<String>()
                 for (number in 1..604) {
                     val page = pages.getJSONObject(number - 1)
