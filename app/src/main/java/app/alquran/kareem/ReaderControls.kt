@@ -54,6 +54,10 @@ internal fun ReaderControls(
     onRevealMore: () -> Unit,
     onRevealLess: () -> Unit,
     onRevealAll: () -> Unit,
+    zoomScale: Float,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+    onZoomReset: () -> Unit,
     onHideControls: () -> Unit
 ) {
     var toolsVisible by rememberSaveable { mutableStateOf(false) }
@@ -151,6 +155,30 @@ internal fun ReaderControls(
                         onClick = { toolsVisible = false; resetReadVisible = true },
                         enabled = readPages.isNotEmpty()
                     ) { Text("بدء ختمة جديدة") }
+
+                    Text("تكبير صفحة المصحف")
+                    Text("التكبير الحالي: ${(zoomScale * 100).toInt()}٪")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        TextButton(
+                            onClick = onZoomOut,
+                            enabled = zoomScale > ReaderZoomRules.MIN_ZOOM
+                        ) { Text("−") }
+                        TextButton(
+                            onClick = onZoomReset,
+                            enabled = zoomScale > ReaderZoomRules.MIN_ZOOM
+                        ) { Text("١٠٠٪") }
+                        TextButton(
+                            onClick = onZoomIn,
+                            enabled = zoomScale < ReaderZoomRules.MAX_ZOOM
+                        ) { Text("+") }
+                    }
+                    Text(
+                        "اضغط مرتين على الصفحة للتكبير أو الرجوع. " +
+                        "عند التكبير اسحب لتحريك الصورة؛ يوقف تقليب الصفحات مؤقتًا."
+                    )
 
                     Text("التسميع الذاتي البصري")
                     TextButton(onClick = onToggleReveal) {
