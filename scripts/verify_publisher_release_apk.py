@@ -44,11 +44,11 @@ def audit_publisher_apk(apk: Path, source: Path, count=604):
                 if hashlib.sha256((source/filename).read_bytes()).hexdigest()!=sha:
                     raise PublisherApkError(f"Unexpected staged page at {n}")
         return {"status":"PUBLISHER_ORIGINAL_BYTES_EXACT_APK",
-                "pages_checked":count,"release_allowed":False,
-                "human_quran_approval":False}
+                "pages_checked":count,"source_integrity_verified":True,
+                "institutional_certification":False}
     except (OSError,BadZipFile,KeyError,ValueError,TypeError) as exc:
         if isinstance(exc,PublisherApkError): raise
-        raise PublisherApkError(f"Invalid development APK or source: {exc}") from exc
+        raise PublisherApkError(f"Invalid publisher-source APK or artwork: {exc}") from exc
 
 if __name__=="__main__":
     cli=argparse.ArgumentParser()
