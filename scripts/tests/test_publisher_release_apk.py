@@ -3,7 +3,7 @@ import hashlib, json, sys, tempfile, unittest
 from pathlib import Path
 from zipfile import ZipFile
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from verify_publisher_release_apk import audit_publisher_apk, PublisherApkError
+from verify_publisher_release_apk import audit_publisher_apk, PublisherApkError, OFFICIAL_HAFS_ARCHIVE_SHA256
 
 class PublisherReleaseApkTests(unittest.TestCase):
     def setUp(self):
@@ -17,10 +17,10 @@ class PublisherReleaseApkTests(unittest.TestCase):
             raw=f"FAKE_PICTURE_{n}".encode()
             self.data[name]=raw
             (self.source/name).write_bytes(raw)
-        self.report={"status":"UNAPPROVED_RENDER_ONLY","page_count":3,
+        self.report={"status":"UNAPPROVED_RENDER_ONLY","source_sha256":OFFICIAL_HAFS_ARCHIVE_SHA256,"page_count":3,
                      "pages":[{"page":n,"file":f"{n:03d}.png",
                                "sha256":hashlib.sha256(self.data[f"{n:03d}.png"]).hexdigest(),
-                               "review_status":"PENDING"} for n in range(1,4)]}
+                               "review_status":"PENDING","width":1600,"height":2287} for n in range(1,4)]}
         self.write()
     def tearDown(self):self.tmp.cleanup()
     def write(self,extra=None,modified=None):
