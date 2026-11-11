@@ -1,6 +1,7 @@
 package app.alquran.kareem
 
 import android.content.res.AssetManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -20,7 +21,10 @@ internal object QuranPublisherSourceVerifier {
     private const val SOURCE_MANIFEST = "source_provenance_manifest.json"
     private val SHA256 = Regex("[0-9a-f]{64}")
 
-    suspend fun check(assets: AssetManager): QuranAssetVerifier.Status.SourceVerified? =
+    suspend fun check(
+        assets: AssetManager,
+        onProgress: (Int) -> Unit = {}
+    ): QuranAssetVerifier.Status.SourceVerified? =
         withContext(Dispatchers.IO) {
             try {
                 val manifest = assets.open("quran/$SOURCE_MANIFEST").use { it.readBytes() }
@@ -32,6 +36,8 @@ internal object QuranPublisherSourceVerifier {
                 require(pages.length() == 604)
                 val wantedFiles = mutableSetOf(SOURCE_MANIFEST)
                 val foundDigests = mutableSetOf<String>()
+                // Reuse a single 64 KiB buffer, instead of allocating 604 of them.
+                val buffer = ByteArray(64 * 1024)
                 for (number in 1..604) {
                     val page = pages.getJSONObject(number - 1)
                     val name = "%03d.png".format(Locale.ROOT, number)
@@ -43,7 +49,6 @@ internal object QuranPublisherSourceVerifier {
                     wantedFiles.add(name)
                     val md = MessageDigest.getInstance("SHA-256")
                     assets.open("quran/$name").use { stream ->
-                        val buffer = ByteArray(64 * 1024)
                         while (true) {
                             val n = stream.read(buffer)
                             if (n < 0) break
@@ -52,9 +57,17 @@ internal object QuranPublisherSourceVerifier {
                     }
                     val actual = md.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
                     require(actual == expectedHash)
+                    if (QuranIntegrityProgressRules.shouldReport(number)) {
+                        withContext(Dispatchers.Main.immediate) {
+                            onProgress(number)
+                        }
+                    }
                 }
                 require(assets.list("quran")?.toSet() == wantedFiles)
                 QuranAssetVerifier.Status.SourceVerified(604)
+            } catch (cancelled: CancellationException) {
+                // A cancelled Activity must not keep hashing the 604-page archive.
+                throw cancelled
             } catch (_: Exception) {
                 // No fallback to partially loaded pages or synthetic Quran text.
                 null
