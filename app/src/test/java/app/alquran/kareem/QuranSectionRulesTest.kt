@@ -18,7 +18,7 @@ class QuranSectionRulesTest {
             number,
             page = 1 + (number - 1) * 10,
             surah = 1 + (number - 1) / 2,
-            ayah = 1 + (number % 2)
+            ayah = if (number % 2 == 1) 1 else 2
         )
     }
 
