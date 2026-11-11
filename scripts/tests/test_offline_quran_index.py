@@ -51,8 +51,30 @@ class OfflineQuranIndexTests(unittest.TestCase):
         self.assertEqual(pages,sorted(pages))
         self.assertTrue(all(1<=p<=604 for p in pages))
 
+    def test_all_240_rub_el_hizb_quarters_are_present(self):
+        quarters = self.sections["quarters"]
+        self.assertEqual(len(quarters), 240)
+        self.assertEqual([q["number"] for q in quarters], list(range(1, 241)))
+        self.assertEqual(quarters[0]["page"], 1)
+        self.assertEqual(quarters[-1]["page"], 599)
+        pages = [q["page"] for q in quarters]
+        self.assertEqual(pages, sorted(pages))
+
+    def test_each_hizb_equals_first_verse_of_its_four_quarters(self):
+        quarters = self.sections["quarters"]
+        hizbs = self.sections["hizb"]
+        for i, hizb in enumerate(hizbs):
+            quarter = quarters[i * 4]
+            for key in ("page", "surah", "ayah"):
+                self.assertEqual(quarter[key], hizb[key])
+
+    def test_source_quarter_metadata_pins_both_authoritative_inputs(self):
+        source = self.sections["source"]
+        self.assertEqual(len(source["quarters_xml_blob_sha"]), 40)
+        self.assertEqual(len(source["quarters_page_blob_sha"]), 40)
+
     def test_every_section_verse_is_positive_and_bounded(self):
-        for section in ("juz","hizb"):
+        for section in ("juz","hizb","quarters"):
             rows=self.sections[section]
             for item in rows:
                 self.assertTrue(1<=item["surah"]<=114)

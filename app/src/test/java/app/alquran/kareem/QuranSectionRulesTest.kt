@@ -22,14 +22,25 @@ class QuranSectionRulesTest {
         )
     }
 
+    private val quarters = (1..240).map { number ->
+        QuranSectionStart(
+            number = number,
+            page = 1 + (number - 1) * 2,
+            surah = 1 + (number - 1) / 3,
+            ayah = 1
+        )
+    }
+
     @Test fun acceptsFullOrderedSections() {
         assertTrue(QuranSectionRules.isValid(juz, 30))
         assertTrue(QuranSectionRules.isValid(hizb, 60))
+        assertTrue(QuranSectionRules.isValid(quarters, 240))
     }
 
     @Test fun refusesMissingSections() {
         assertFalse(QuranSectionRules.isValid(juz.dropLast(1), 30))
         assertFalse(QuranSectionRules.isValid(hizb.dropLast(1), 60))
+        assertFalse(QuranSectionRules.isValid(quarters.dropLast(1), 240))
     }
 
     @Test fun refusesWrongJuzThirtyStart() {
@@ -45,6 +56,15 @@ class QuranSectionRulesTest {
     @Test fun refusesUnorderedSectionNumbers() {
         assertFalse(QuranSectionRules.isValid(
             hizb.map { if (it.number == 12) it.copy(number = 13) else it }, 60))
+    }
+
+    @Test fun refusesReorderedOrOutOfRangeQuarters() {
+        assertFalse(QuranSectionRules.isValid(
+            quarters.map { if (it.number == 200) it.copy(page = 605) else it }, 240))
+        assertFalse(QuranSectionRules.isValid(
+            quarters.map { if (it.number == 150) it.copy(number = 149) else it }, 240))
+        assertFalse(QuranSectionRules.isValid(
+            quarters.map { if (it.number == 90) it.copy(page = 3) else it }, 240))
     }
 
     @Test fun refusesDecreasingVerses() {

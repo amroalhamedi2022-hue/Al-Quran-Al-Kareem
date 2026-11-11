@@ -20,6 +20,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -61,7 +62,7 @@ internal fun ReaderControls(
     var verseVisible by rememberSaveable { mutableStateOf(false) }
     var verseReference by rememberSaveable { mutableStateOf("") }
     var sectionsVisible by rememberSaveable { mutableStateOf(false) }
-    var showHizb by rememberSaveable { mutableStateOf(false) }
+    var sectionMode by rememberSaveable { mutableIntStateOf(0) }
     var indexQuery by rememberSaveable { mutableStateOf("") }
     var bookmarksVisible by rememberSaveable { mutableStateOf(false) }
     var resetReadVisible by rememberSaveable { mutableStateOf(false) }
@@ -76,10 +77,12 @@ internal fun ReaderControls(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
         ) {
+            // In Arabic RTL layout, the FIRST child is at the right edge.
+            // Keep NEXT on the right to match swiping right to advance.
             TextButton(
-                onClick = onPrevious,
-                enabled = ReaderPagination.hasPrevious(page, pageCount, twoPageSpread)
-            ) { Text("السابق") }
+                onClick = onNext,
+                enabled = ReaderPagination.hasNext(page, pageCount, twoPageSpread)
+            ) { Text("التالي") }
             Text(
                 text = if (shownPages.size == 2) {
                     "${shownPages.last()}–${shownPages.first()} / $pageCount"
@@ -87,9 +90,9 @@ internal fun ReaderControls(
                 textAlign = TextAlign.Center
             )
             TextButton(
-                onClick = onNext,
-                enabled = ReaderPagination.hasNext(page, pageCount, twoPageSpread)
-            ) { Text("التالي") }
+                onClick = onPrevious,
+                enabled = ReaderPagination.hasPrevious(page, pageCount, twoPageSpread)
+            ) { Text("السابق") }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -127,8 +130,8 @@ internal fun ReaderControls(
                         enabled = surahs.size == 114
                     ) { Text("فهرس السور (114)") }
                     TextButton(
-                        onClick = { toolsVisible = false; showHizb = false; sectionsVisible = true },
-                        enabled = sections.juz.size == 30 && sections.hizb.size == 60
+                        onClick = { toolsVisible = false; sectionMode = 0; sectionsVisible = true },
+                        enabled = sections.juz.size == 30 && sections.hizb.size == 60 && sections.quarters.size == 240
                     ) { Text("الأجزاء والأحزاب") }
                     TextButton(
                         onClick = { toolsVisible = false; verseReference = ""; verseVisible = true },
@@ -313,17 +316,30 @@ internal fun ReaderControls(
 
 
     if (sectionsVisible) {
+        val sectionTitle = when (sectionMode) {
+            1 -> "الأحزاب"
+            2 -> "أرباع الأحزاب"
+            else -> "الأجزاء"
+        }
         AlertDialog(
             onDismissRequest = { sectionsVisible = false },
-            title = { Text(if (showHizb) "فهرس الأحزاب" else "فهرس الأجزاء") },
+            title = { Text("فهرس $sectionTitle") },
             text = {
                 Column {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        TextButton(onClick = { showHizb = false }) { Text("30 جزءًا") }
-                        TextButton(onClick = { showHizb = true }) { Text("60 حزبًا") }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        TextButton(onClick = { sectionMode = 0 }) { Text("30 جزءًا") }
+                        TextButton(onClick = { sectionMode = 1 }) { Text("60 حزبًا") }
+                        TextButton(onClick = { sectionMode = 2 }) { Text("240 ربعًا") }
                     }
                     LazyColumn(modifier = Modifier.heightIn(max = 410.dp)) {
-                        val entries = if (showHizb) sections.hizb else sections.juz
+                        val entries = when (sectionMode) {
+                            1 -> sections.hizb
+                            2 -> sections.quarters
+                            else -> sections.juz
+                        }
                         items(entries, key = { it.number }) { entry ->
                             TextButton(
                                 onClick = {
@@ -333,8 +349,11 @@ internal fun ReaderControls(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = (if (showHizb) "الحزب" else "الجزء") +
-                                        " ${entry.number} — صفحة ${entry.page}",
+                                    text = (when (sectionMode) {
+                                        1 -> "الحزب"
+                                        2 -> "الربع"
+                                        else -> "الجزء"
+                                    }) + " ${entry.number} — صفحة ${entry.page}",
                                     modifier = Modifier.fillMaxWidth(),
                                     textAlign = TextAlign.Start
                                 )
