@@ -48,8 +48,8 @@ internal object ReaderZoomRules {
         val maxX = ((displayedWidth - viewportWidthPx) / 2f).coerceAtLeast(0f)
         val maxY = ((displayedHeight - viewportHeightPx) / 2f).coerceAtLeast(0f)
         return Pan(
-            if (x.isFinite()) x.coerceIn(-maxX, maxX) else 0f,
-            if (y.isFinite()) y.coerceIn(-maxY, maxY) else 0f
+            if (maxX == 0f || !x.isFinite()) 0f else x.coerceIn(-maxX, maxX),
+            if (maxY == 0f || !y.isFinite()) 0f else y.coerceIn(-maxY, maxY)
         )
     }
 }
