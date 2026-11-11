@@ -3,6 +3,7 @@ package app.alquran.kareem
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
+import kotlinx.coroutines.delay
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -129,6 +130,16 @@ private fun Reader(pageCount: Int) {
     LaunchedEffect(focusRequester) { focusRequester.requestFocus() }
     LaunchedEffect(page, pageCount) {
         positionStore.save(page, pageCount)
+    }
+    // Warm only a verified neighboring image, and only on devices with enough
+    // heap for the currently visible full-size pages plus one more bitmap.
+    // Navigation cancels this coroutine, so no stale prefetch takes precedence.
+    LaunchedEffect(page, twoPageSpread, pageRepository, pageCount) {
+        delay(160)
+        val shown = ReaderPagination.visible(page, pageCount, twoPageSpread)
+        shown.forEach { pageRepository.load(it) }
+        pageRepository.prefetchTarget(page, pageCount, twoPageSpread)
+            ?.let { pageRepository.load(it) }
     }
     val visible = ReaderPagination.visible(page, pageCount, twoPageSpread)
     // Never infer verse boundaries: only an opt-in paper mask over immutable pixels.
