@@ -36,6 +36,8 @@ internal fun ReaderControls(
     twoPageSpread: Boolean,
     bookmarks: Set<Int>,
     readPages: Set<Int>,
+    surahs: List<SurahIndexEntry>,
+    sections: QuranSectionIndex,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onJump: (Int) -> Unit,
@@ -45,6 +47,10 @@ internal fun ReaderControls(
     onHideControls: () -> Unit
 ) {
     var jumpVisible by rememberSaveable { mutableStateOf(false) }
+    var indexVisible by rememberSaveable { mutableStateOf(false) }
+    var sectionsVisible by rememberSaveable { mutableStateOf(false) }
+    var showHizb by rememberSaveable { mutableStateOf(false) }
+    var indexQuery by rememberSaveable { mutableStateOf("") }
     var bookmarksVisible by rememberSaveable { mutableStateOf(false) }
     var resetReadVisible by rememberSaveable { mutableStateOf(false) }
     var pageField by rememberSaveable { mutableStateOf("") }
@@ -74,6 +80,14 @@ internal fun ReaderControls(
                 pageField = page.toString()
                 jumpVisible = true
             }) { Text("انتقل لصفحة") }
+            TextButton(
+                onClick = { indexQuery = ""; indexVisible = true },
+                enabled = surahs.size == 114
+            ) { Text("فهرس السور") }
+            TextButton(
+                onClick = { showHizb = false; sectionsVisible = true },
+                enabled = sections.juz.size == 30 && sections.hizb.size == 60
+            ) { Text("الأجزاء والأحزاب") }
             TextButton(onClick = onToggleBookmark) {
                 Text(if (page in bookmarks) "إزالة العلامة" else "وضع علامة")
             }
@@ -150,6 +164,88 @@ internal fun ReaderControls(
             },
             dismissButton = {
                 TextButton(onClick = { jumpVisible = false }) { Text("إلغاء") }
+            }
+        )
+    }
+
+
+    if (indexVisible) {
+        AlertDialog(
+            onDismissRequest = { indexVisible = false },
+            title = { Text("فهرس سور القرآن الكريم") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = indexQuery,
+                        onValueChange = { indexQuery = it.take(60) },
+                        label = { Text("اسم السورة أو رقمها") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    val matches = SurahIndexRules.search(surahs, indexQuery)
+                    if (matches.isEmpty()) {
+                        Text("لم أجد سورة بهذا الاسم.")
+                    } else {
+                        LazyColumn(modifier = Modifier.heightIn(max = 410.dp)) {
+                            items(matches, key = { it.number }) { surah ->
+                                TextButton(
+                                    onClick = {
+                                        onJump(surah.startPage)
+                                        indexVisible = false
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = "${surah.number}. ${surah.name} — صفحة ${surah.startPage}",
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.Start
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { indexVisible = false }) { Text("إغلاق") }
+            }
+        )
+    }
+
+
+    if (sectionsVisible) {
+        AlertDialog(
+            onDismissRequest = { sectionsVisible = false },
+            title = { Text(if (showHizb) "فهرس الأحزاب" else "فهرس الأجزاء") },
+            text = {
+                Column {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        TextButton(onClick = { showHizb = false }) { Text("30 جزءًا") }
+                        TextButton(onClick = { showHizb = true }) { Text("60 حزبًا") }
+                    }
+                    LazyColumn(modifier = Modifier.heightIn(max = 410.dp)) {
+                        val entries = if (showHizb) sections.hizb else sections.juz
+                        items(entries, key = { it.number }) { entry ->
+                            TextButton(
+                                onClick = {
+                                    onJump(entry.page)
+                                    sectionsVisible = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = (if (showHizb) "الحزب" else "الجزء") +
+                                        " ${entry.number} — صفحة ${entry.page}",
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Start
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { sectionsVisible = false }) { Text("إغلاق") }
             }
         )
     }
