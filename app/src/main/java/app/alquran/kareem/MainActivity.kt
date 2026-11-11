@@ -63,6 +63,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -127,6 +128,15 @@ private fun Reader(pageCount: Int) {
     val positionStore = remember(context) { ReaderPositionStore(context) }
     val bookmarkStore = remember(context) { ReaderBookmarkStore(context) }
     val khatmaStore = remember(context) { KhatmaProgressStore(context) }
+    val displaySettingsStore = remember(context) { ReaderDisplaySettingsStore(context) }
+    var displaySettings by remember { mutableStateOf(displaySettingsStore.read()) }
+    val hostView = LocalView.current
+    // The Android view's keepScreenOn flag is scoped to the reader lifecycle.
+    // It is off by default, and cleared when reader leaves composition.
+    DisposableEffect(hostView, displaySettings.keepScreenAwake) {
+        hostView.keepScreenOn = displaySettings.keepScreenAwake
+        onDispose { hostView.keepScreenOn = false }
+    }
     val pageRepository = remember(context) { QuranPageBitmapRepository(context) }
     // The complete source-checked 114-Surah index stays bundled for offline use.
     val surahs = remember(context) { SurahIndexStore.load(context.assets) }
@@ -163,6 +173,11 @@ private fun Reader(pageCount: Int) {
         if (isTurning) return
         val target = if (forward) ReaderPagination.next(page, pageCount, twoPageSpread)
             else ReaderPagination.previous(page, pageCount, twoPageSpread)
+        if (!ReaderMotionRules.animateTurn(displaySettings.reduceMotion)) {
+            turnOffsetPx = 0f
+            if (target != page) page = target
+            return
+        }
         val initial = turnOffsetPx
         turnScope.launch {
             isTurning = true
@@ -198,6 +213,10 @@ private fun Reader(pageCount: Int) {
 
     fun cancelDragTurn() {
         if (isTurning) return
+        if (!ReaderMotionRules.animateTurn(displaySettings.reduceMotion)) {
+            turnOffsetPx = 0f
+            return
+        }
         turnScope.launch {
             isTurning = true
             try {
@@ -291,28 +310,39 @@ private fun Reader(pageCount: Int) {
                             }
                         )
                     }
-                    .pointerInput(page, twoPageSpread, zoomScale) {
-                    if (!ReaderZoomRules.isZoomed(zoomScale)) detectHorizontalDragGestures(
-                        onDragStart = { if (!isTurning) turnOffsetPx = 0f },
-                        onHorizontalDrag = { change, amount ->
-                            if (!isTurning) {
-                                turnOffsetPx = (turnOffsetPx + amount)
-                                    .coerceIn(-pageViewportWidthPx, pageViewportWidthPx)
-                            }
-                            change.consume()
-                        },
-                        onDragEnd = {
-                            if (!isTurning) {
-                                when (ReaderGestureRules.classify(turnOffsetPx, 64.dp.toPx())) {
-                                    ReaderGestureRules.Turn.NEXT -> requestPageTurn(true)
-                                    ReaderGestureRules.Turn.PREVIOUS -> requestPageTurn(false)
-                                    ReaderGestureRules.Turn.NONE -> cancelDragTurn()
+                    .pointerInput(page, twoPageSpread, zoomScale, displaySettings.reduceMotion) {
+                        var swipeDistance = 0f
+                        if (!ReaderZoomRules.isZoomed(zoomScale)) detectHorizontalDragGestures(
+                            onDragStart = {
+                                swipeDistance = 0f
+                                if (!isTurning) turnOffsetPx = 0f
+                            },
+                            onHorizontalDrag = { change, amount ->
+                                if (!isTurning) {
+                                    swipeDistance += amount
+                                    if (ReaderMotionRules.animateTurn(displaySettings.reduceMotion)) {
+                                        turnOffsetPx = (turnOffsetPx + amount)
+                                            .coerceIn(-pageViewportWidthPx, pageViewportWidthPx)
+                                    }
                                 }
+                                change.consume()
+                            },
+                            onDragEnd = {
+                                if (!isTurning) {
+                                    when (ReaderGestureRules.classify(swipeDistance, 64.dp.toPx())) {
+                                        ReaderGestureRules.Turn.NEXT -> requestPageTurn(true)
+                                        ReaderGestureRules.Turn.PREVIOUS -> requestPageTurn(false)
+                                        ReaderGestureRules.Turn.NONE -> cancelDragTurn()
+                                    }
+                                }
+                                swipeDistance = 0f
+                            },
+                            onDragCancel = {
+                                swipeDistance = 0f
+                                cancelDragTurn()
                             }
-                        },
-                        onDragCancel = { cancelDragTurn() }
-                    )
-                },
+                        )
+                    },
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -349,7 +379,8 @@ private fun Reader(pageCount: Int) {
                                 }
                                 .graphicsLayer {
                                 val pose = ReaderPaperTurnRules.pose(turnOffsetPx, pageViewportWidthPx)
-                                if (ReaderPaperTurnRules.shouldTiltPage(
+                                if (ReaderMotionRules.animateTurn(displaySettings.reduceMotion) &&
+                                    ReaderPaperTurnRules.shouldTiltPage(
                                         index, twoPageSpread, turnOffsetPx
                                     )
                                 ) {
@@ -411,6 +442,19 @@ private fun Reader(pageCount: Int) {
             onZoomIn = { setZoom(ReaderZoomRules.zoomIn(zoomScale)) },
             onZoomOut = { setZoom(ReaderZoomRules.zoomOut(zoomScale)) },
             onZoomReset = { setZoom(ReaderZoomRules.MIN_ZOOM) },
+            keepScreenAwake = displaySettings.keepScreenAwake,
+            reduceMotion = displaySettings.reduceMotion,
+            onKeepScreenAwakeChanged = { enabled ->
+                val updated = displaySettings.copy(keepScreenAwake = enabled)
+                displaySettingsStore.save(updated)
+                displaySettings = updated
+            },
+            onReduceMotionChanged = { enabled ->
+                val updated = displaySettings.copy(reduceMotion = enabled)
+                displaySettingsStore.save(updated)
+                displaySettings = updated
+                turnOffsetPx = 0f
+            },
             onHideControls = { showControls = false }
                 )
             }
