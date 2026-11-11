@@ -40,6 +40,8 @@ internal fun ReaderControls(
     twoPageSpread: Boolean,
     bookmarks: Set<Int>,
     readPages: Set<Int>,
+    dailyWirdTarget: Int,
+    onDailyWirdTargetChanged: (Int) -> Unit,
     surahs: List<SurahIndexEntry>,
     sections: QuranSectionIndex,
     pageAnchors: List<PageVerseAnchor>,
@@ -165,6 +167,42 @@ internal fun ReaderControls(
                         onClick = { toolsVisible = false; resetReadVisible = true },
                         enabled = readPages.isNotEmpty()
                     ) { Text("بدء ختمة جديدة") }
+
+                    Text("خطة الورد اليومي — تحديد يدوي")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = { onDailyWirdTargetChanged(dailyWirdTarget - 1) },
+                            enabled = dailyWirdTarget > DailyWirdRules.MIN_PAGES
+                        ) { Text("−") }
+                        Text("$dailyWirdTarget صفحة يوميًا")
+                        TextButton(
+                            onClick = { onDailyWirdTargetChanged(dailyWirdTarget + 1) },
+                            enabled = dailyWirdTarget < DailyWirdRules.MAX_PAGES
+                        ) { Text("+") }
+                    }
+                    val nextWird = DailyWirdRules.suggestedNextPages(
+                        readPages, pageCount, dailyWirdTarget
+                    )
+                    if (nextWird.isEmpty()) {
+                        Text("أتممت تعليم جميع صفحات الختمة. بارك الله فيك.")
+                    } else {
+                        Text(
+                            "الورد المقترح: " + nextWird.joinToString("، ") +
+                            " — المتبقي تقديريًا " +
+                            DailyWirdRules.estimatedDaysRemaining(
+                                readPages, pageCount, dailyWirdTarget
+                            ) + " يومًا"
+                        )
+                        TextButton(onClick = {
+                            onJump(nextWird.first())
+                            toolsVisible = false
+                        }) { Text("افتح أول صفحة في الورد") }
+                    }
+                    Text("لا تُعلَّم الصفحات مقروءة إلا بضغطك على زر القراءة.")
 
                     Text("إعدادات القراءة")
                     Row(
