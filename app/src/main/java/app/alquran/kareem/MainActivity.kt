@@ -128,6 +128,7 @@ private fun Reader(pageCount: Int) {
     val positionStore = remember(context) { ReaderPositionStore(context) }
     val bookmarkStore = remember(context) { ReaderBookmarkStore(context) }
     val khatmaStore = remember(context) { KhatmaProgressStore(context) }
+    val dailyWirdStore = remember(context) { DailyWirdStore(context) }
     val displaySettingsStore = remember(context) { ReaderDisplaySettingsStore(context) }
     var displaySettings by remember { mutableStateOf(displaySettingsStore.read()) }
     val hostView = LocalView.current
@@ -148,6 +149,7 @@ private fun Reader(pageCount: Int) {
     var page by rememberSaveable { mutableIntStateOf(positionStore.read(pageCount)) }
     var bookmarks by remember { mutableStateOf(bookmarkStore.read(pageCount)) }
     var readPages by remember { mutableStateOf(khatmaStore.read(pageCount)) }
+    var dailyWirdTarget by remember { mutableIntStateOf(dailyWirdStore.readTarget()) }
     var showControls by rememberSaveable { mutableStateOf(true) }
     var revealActive by rememberSaveable { mutableStateOf(false) }
     var revealStep by rememberSaveable { mutableIntStateOf(0) }
@@ -403,6 +405,12 @@ private fun Reader(pageCount: Int) {
             twoPageSpread = twoPageSpread,
             bookmarks = bookmarks,
             readPages = readPages,
+            dailyWirdTarget = dailyWirdTarget,
+            onDailyWirdTargetChanged = { target ->
+                val next = DailyWirdRules.normalizeTarget(target)
+                dailyWirdStore.saveTarget(next)
+                dailyWirdTarget = next
+            },
             surahs = surahs,
             sections = sections,
             pageAnchors = pageAnchors,
