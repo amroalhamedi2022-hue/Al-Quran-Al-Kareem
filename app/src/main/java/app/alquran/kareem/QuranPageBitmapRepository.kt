@@ -53,7 +53,11 @@ internal class QuranPageBitmapRepository(context: Context) {
                 } catch (_: Exception) {
                     null // Fail closed; do not render replacement Quranic text.
                 } catch (_: OutOfMemoryError) {
-                    null // Never crash the reader or substitute fabricated text.
+                    // Free cached references before the user can retry this
+                    // page. Do not recycle: a visible Compose Image can still
+                    // hold one of the same immutable Bitmaps.
+                    trim()
+                    null // Never crash the reader or substitute invented text.
                 }
             }
             if (decoded == null) return@withLock null
@@ -69,6 +73,10 @@ internal class QuranPageBitmapRepository(context: Context) {
     /** This never loads the entire book; at most one adjacent page is warmed. */
     fun prefetchTarget(currentPage: Int, totalPages: Int, twoPageSpread: Boolean): Int? =
         ReaderPrefetchRules.target(currentPage, totalPages, twoPageSpread, budgetBytes)
+
+    fun onMemoryPressure(level: Int) {
+        if (ReaderMemoryPressureRules.shouldTrim(level)) trim()
+    }
 
     fun trim() {
         // Do not recycle evicted bitmaps; Compose can still hold a reference.
