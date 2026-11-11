@@ -25,9 +25,9 @@ class PublisherReleaseApkTests(unittest.TestCase):
     def tearDown(self):self.tmp.cleanup()
     def write(self,extra=None,modified=None):
         manifest=json.dumps(self.report).encode()
-        (self.source/"source_preview_manifest.json").write_bytes(manifest)
+        (self.source/"source_provenance_manifest.json").write_bytes(manifest)
         with ZipFile(self.apk,"w") as z:
-            z.writestr("assets/quran/source_preview_manifest.json",manifest)
+            z.writestr("assets/quran/source_provenance_manifest.json",manifest)
             for name,payload in self.data.items():
                 z.writestr("assets/quran/"+name,modified if modified is not None and name=="002.png" else payload)
             if extra: z.writestr("assets/quran/extra.txt",b"not allowed")
@@ -48,7 +48,7 @@ class PublisherReleaseApkTests(unittest.TestCase):
             self.audit()
     def test_missing_embedded_page_refused(self):
         with ZipFile(self.apk,"w") as z:
-            z.writestr("assets/quran/source_preview_manifest.json",(self.source/"source_preview_manifest.json").read_bytes())
+            z.writestr("assets/quran/source_provenance_manifest.json",(self.source/"source_provenance_manifest.json").read_bytes())
             z.writestr("assets/quran/001.png",self.data["001.png"])
         with self.assertRaisesRegex(PublisherApkError,"Missing/extra"):
             self.audit()
