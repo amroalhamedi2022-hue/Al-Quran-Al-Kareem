@@ -18,6 +18,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -58,7 +59,7 @@ internal fun ReaderControls(
     var verseVisible by rememberSaveable { mutableStateOf(false) }
     var verseReference by rememberSaveable { mutableStateOf("") }
     var sectionsVisible by rememberSaveable { mutableStateOf(false) }
-    var showHizb by rememberSaveable { mutableStateOf(false) }
+    var sectionMode by rememberSaveable { mutableIntStateOf(0) }
     var indexQuery by rememberSaveable { mutableStateOf("") }
     var bookmarksVisible by rememberSaveable { mutableStateOf(false) }
     var resetReadVisible by rememberSaveable { mutableStateOf(false) }
@@ -98,8 +99,8 @@ internal fun ReaderControls(
                 enabled = surahs.size == 114 && pageAnchors.size == 604
             ) { Text("الآية") }
             TextButton(
-                onClick = { showHizb = false; sectionsVisible = true },
-                enabled = sections.juz.size == 30 && sections.hizb.size == 60
+                onClick = { sectionMode = 0; sectionsVisible = true },
+                enabled = sections.juz.size == 30 && sections.hizb.size == 60 && sections.rub.size == 240
             ) { Text("الأجزاء والأحزاب") }
             TextButton(onClick = onToggleBookmark) {
                 Text(if (page in bookmarks) "إزالة العلامة" else "وضع علامة")
@@ -293,15 +294,24 @@ internal fun ReaderControls(
     if (sectionsVisible) {
         AlertDialog(
             onDismissRequest = { sectionsVisible = false },
-            title = { Text(if (showHizb) "فهرس الأحزاب" else "فهرس الأجزاء") },
+            title = { Text(when (sectionMode) {
+                0 -> "فهرس الأجزاء"
+                1 -> "فهرس الأحزاب"
+                else -> "فهرس أرباع الأحزاب"
+            }) },
             text = {
                 Column {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        TextButton(onClick = { showHizb = false }) { Text("30 جزءًا") }
-                        TextButton(onClick = { showHizb = true }) { Text("60 حزبًا") }
+                        TextButton(onClick = { sectionMode = 0 }) { Text("30 جزءًا") }
+                        TextButton(onClick = { sectionMode = 1 }) { Text("60 حزبًا") }
+                        TextButton(onClick = { sectionMode = 2 }) { Text("240 ربعًا") }
                     }
                     LazyColumn(modifier = Modifier.heightIn(max = 410.dp)) {
-                        val entries = if (showHizb) sections.hizb else sections.juz
+                        val entries = when (sectionMode) {
+                            0 -> sections.juz
+                            1 -> sections.hizb
+                            else -> sections.rub
+                        }
                         items(entries, key = { it.number }) { entry ->
                             TextButton(
                                 onClick = {
@@ -311,7 +321,11 @@ internal fun ReaderControls(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = (if (showHizb) "الحزب" else "الجزء") +
+                                    text = (when (sectionMode) {
+                                        0 -> "الجزء"
+                                        1 -> "الحزب"
+                                        else -> "ربع الحزب"
+                                    }) +
                                         " ${entry.number} — صفحة ${entry.page}",
                                     modifier = Modifier.fillMaxWidth(),
                                     textAlign = TextAlign.Start
