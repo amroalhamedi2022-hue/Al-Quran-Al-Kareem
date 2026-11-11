@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,14 +35,18 @@ internal fun ReaderControls(
     pageCount: Int,
     twoPageSpread: Boolean,
     bookmarks: Set<Int>,
+    readPages: Set<Int>,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onJump: (Int) -> Unit,
     onToggleBookmark: () -> Unit,
+    onToggleRead: () -> Unit,
+    onResetRead: () -> Unit,
     onHideControls: () -> Unit
 ) {
     var jumpVisible by rememberSaveable { mutableStateOf(false) }
     var bookmarksVisible by rememberSaveable { mutableStateOf(false) }
+    var resetReadVisible by rememberSaveable { mutableStateOf(false) }
     var pageField by rememberSaveable { mutableStateOf("") }
     val validJump = ReaderNavigationRules.parsePage(pageField, pageCount)
 
@@ -79,6 +84,41 @@ internal fun ReaderControls(
                 Text("إخفاء الأدوات")
             }
         }
+        val shownPages = ReaderPagination.visible(page, pageCount, twoPageSpread)
+        val shownRead = shownPages.all { it in readPages }
+        Text(
+            text = "الختمة اليدوية: ${readPages.size} من $pageCount صفحة",
+            modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)
+        )
+        LinearProgressIndicator(
+            progress = { KhatmaProgressRules.fraction(readPages, pageCount) },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            TextButton(onClick = onToggleRead) {
+                Text(if (shownRead) "إلغاء تعليم المعروض" else "قرأت الصفحات المعروضة")
+            }
+            TextButton(onClick = { resetReadVisible = true }, enabled = readPages.isNotEmpty()) {
+                Text("بدء ختمة جديدة")
+            }
+        }
+    }
+
+    if (resetReadVisible) {
+        AlertDialog(
+            onDismissRequest = { resetReadVisible = false },
+            title = { Text("بدء ختمة جديدة") },
+            text = { Text("هل تريد مسح علامات الصفحات التي قرأتها؟ لن تتغير العلامات المرجعية أو موضع القراءة.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onResetRead()
+                    resetReadVisible = false
+                }) { Text("ابدأ ختمة جديدة") }
+            },
+            dismissButton = {
+                TextButton(onClick = { resetReadVisible = false }) { Text("إلغاء") }
+            }
+        )
     }
 
     if (jumpVisible) {
