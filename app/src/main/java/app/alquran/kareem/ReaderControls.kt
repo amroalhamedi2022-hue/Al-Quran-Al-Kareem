@@ -38,6 +38,7 @@ internal fun ReaderControls(
     page: Int,
     pageCount: Int,
     twoPageSpread: Boolean,
+    navigationTwoPageSpread: Boolean,
     bookmarks: Set<Int>,
     readPages: Set<Int>,
     dailyWirdTarget: Int,
@@ -99,7 +100,7 @@ internal fun ReaderControls(
             // Keep NEXT on the right to match swiping right to advance.
             TextButton(
                 onClick = onNext,
-                enabled = ReaderPagination.hasNext(page, pageCount, twoPageSpread)
+                enabled = ReaderPagination.hasNext(page, pageCount, navigationTwoPageSpread)
             ) { Text("التالي") }
             Text(
                 text = if (shownPages.size == 2) {
@@ -109,7 +110,7 @@ internal fun ReaderControls(
             )
             TextButton(
                 onClick = onPrevious,
-                enabled = ReaderPagination.hasPrevious(page, pageCount, twoPageSpread)
+                enabled = ReaderPagination.hasPrevious(page, pageCount, navigationTwoPageSpread)
             ) { Text("السابق") }
         }
         Row(
