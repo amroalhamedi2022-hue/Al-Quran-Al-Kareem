@@ -160,6 +160,7 @@ internal fun ReaderControls(
                         toolsVisible = false
                         bookmarksVisible = true
                     }) { Text("العلامات المرجعية (${bookmarks.size})") }
+                    Text("اضغط مطولًا على أي صفحة لحفظ علامة لها أو إزالتها؛ حتى في العرض المزدوج.")
 
                     Text("الختمة — ${readPages.size} من $pageCount صفحة")
                     TextButton(onClick = onToggleRead) {
