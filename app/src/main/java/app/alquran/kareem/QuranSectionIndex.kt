@@ -13,12 +13,13 @@ internal data class QuranSectionStart(
 
 internal data class QuranSectionIndex(
     val juz: List<QuranSectionStart>,
-    val hizb: List<QuranSectionStart>
+    val hizb: List<QuranSectionStart>,
+    val rub: List<QuranSectionStart>
 )
 
 internal object QuranSectionRules {
     fun isValid(items: List<QuranSectionStart>, expected: Int): Boolean {
-        if (expected !in listOf(30, 60) || items.size != expected) return false
+        if (expected !in listOf(30, 60, 240) || items.size != expected) return false
         var lastPage = 0
         var lastSurah = 0
         var lastAyah = 0
@@ -56,10 +57,13 @@ internal object QuranSectionStore {
         }
         val juz = decode("juz")
         val hizb = decode("hizb")
+        val rub = decode("rub")
         require(QuranSectionRules.isValid(juz, 30))
         require(QuranSectionRules.isValid(hizb, 60))
-        QuranSectionIndex(juz, hizb)
+        require(QuranSectionRules.isValid(rub, 240))
+        require(hizb.indices.all { index -> hizb[index].page == rub[index * 4].page })
+        QuranSectionIndex(juz, hizb, rub)
     } catch (_: Exception) {
-        QuranSectionIndex(emptyList(), emptyList())
+        QuranSectionIndex(emptyList(), emptyList(), emptyList())
     }
 }
