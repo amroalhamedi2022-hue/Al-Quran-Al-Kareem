@@ -7,6 +7,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -99,6 +109,9 @@ private fun Reader(pageCount: Int) {
     }
     var page by rememberSaveable { mutableIntStateOf(positionStore.read(pageCount)) }
     var bookmarks by remember { mutableStateOf(bookmarkStore.read(pageCount)) }
+    var showControls by rememberSaveable { mutableStateOf(true) }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(focusRequester) { focusRequester.requestFocus() }
     LaunchedEffect(page, pageCount) {
         positionStore.save(page, pageCount)
     }
@@ -106,7 +119,53 @@ private fun Reader(pageCount: Int) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
-                Modifier.weight(1f).fillMaxWidth().pointerInput(page, twoPageSpread) {
+                Modifier.weight(1f).fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyUp) {
+                            false
+                        } else {
+                            when (event.key) {
+                                Key.DirectionRight, Key.PageDown -> {
+                                    if (ReaderPagination.hasNext(page, pageCount, twoPageSpread)) {
+                                        page = ReaderPagination.next(page, pageCount, twoPageSpread)
+                                    }
+                                    true
+                                }
+                                Key.DirectionLeft, Key.PageUp -> {
+                                    if (ReaderPagination.hasPrevious(page, pageCount, twoPageSpread)) {
+                                        page = ReaderPagination.previous(page, pageCount, twoPageSpread)
+                                    }
+                                    true
+                                }
+                                Key.Escape -> {
+                                    showControls = true
+                                    true
+                                }
+                                else -> false
+                            }
+                        }
+                    }
+                    .focusable()
+                    .pointerInput(page, twoPageSpread) {
+                        detectTapGestures(onTap = { offset ->
+                            when (ReaderTouchRules.classify(offset.x, size.width.toFloat())) {
+                                ReaderTouchRules.Action.NEXT -> {
+                                    if (ReaderPagination.hasNext(page, pageCount, twoPageSpread)) {
+                                        page = ReaderPagination.next(page, pageCount, twoPageSpread)
+                                    }
+                                }
+                                ReaderTouchRules.Action.PREVIOUS -> {
+                                    if (ReaderPagination.hasPrevious(page, pageCount, twoPageSpread)) {
+                                        page = ReaderPagination.previous(page, pageCount, twoPageSpread)
+                                    }
+                                }
+                                ReaderTouchRules.Action.TOGGLE_CONTROLS -> showControls = !showControls
+                                ReaderTouchRules.Action.NONE -> Unit
+                            }
+                        })
+                    }
+                    .pointerInput(page, twoPageSpread) {
                     var swipeDistance = 0f
                     detectHorizontalDragGestures(
                         onDragStart = { swipeDistance = 0f },
@@ -147,20 +206,23 @@ private fun Reader(pageCount: Int) {
                 }
             }
         }
-        ReaderControls(
-            page = page,
+        AnimatedVisibility(visible = showControls) {
+            ReaderControls(
+                page = page,
             pageCount = pageCount,
             twoPageSpread = twoPageSpread,
             bookmarks = bookmarks,
             onPrevious = { page = ReaderPagination.previous(page, pageCount, twoPageSpread) },
             onNext = { page = ReaderPagination.next(page, pageCount, twoPageSpread) },
             onJump = { requested -> page = ReaderPagination.clamp(requested, pageCount) },
-            onToggleBookmark = {
-                val updated = ReaderNavigationRules.toggleBookmark(bookmarks, page, pageCount)
-                bookmarkStore.save(updated, pageCount)
-                bookmarks = updated
-            }
-        )
+                onToggleBookmark = {
+                    val updated = ReaderNavigationRules.toggleBookmark(bookmarks, page, pageCount)
+                    bookmarkStore.save(updated, pageCount)
+                    bookmarks = updated
+                },
+                onHideControls = { showControls = false }
+            )
+        }
     }
 }
 
