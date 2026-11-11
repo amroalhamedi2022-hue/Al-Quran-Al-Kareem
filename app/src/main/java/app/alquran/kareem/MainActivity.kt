@@ -102,7 +102,7 @@ private fun QuranApp() {
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "القرآن الكريم\n\n${verified.reason}\n\nلن يتم عرض أي صفحة قبل اعتماد المصحف كاملًا.",
+                text = "القرآن الكريم\n\n${verified.reason}\n\nلن يتم عرض صفحات ناقصة أو مختلفة عن المصدر الأصلي المتحقق منه.",
                 textAlign = TextAlign.Center
             )
         }
@@ -169,12 +169,17 @@ private fun Reader(pageCount: Int) {
     }
 
     fun requestPageTurn(forward: Boolean) {
-        // Leave the magnifier before navigating, never keep a zoom/pan transform
-        // attached to a DIFFERENT numbered Quran page.
-        if (ReaderZoomRules.isZoomed(zoomScale)) setZoom(1f)
         if (isTurning) return
-        val target = if (forward) ReaderPagination.next(page, pageCount, twoPageSpread)
-            else ReaderPagination.previous(page, pageCount, twoPageSpread)
+        // The temporary single-page zoom view must not change tablet book
+        // pagination. Resolve the NEXT full spread before dropping the zoom.
+        val normalTwoPageSpread = ReaderViewportRules.twoPageSpread(
+            configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
+            configuration.screenWidthDp
+        )
+        val target = ReaderTurnTargetRules.target(
+            page, pageCount, normalTwoPageSpread, forward
+        )
+        if (ReaderZoomRules.isZoomed(zoomScale)) setZoom(1f)
         if (!ReaderMotionRules.animateTurn(displaySettings.reduceMotion)) {
             turnOffsetPx = 0f
             if (target != page) page = target
@@ -192,7 +197,7 @@ private fun Reader(pageCount: Int) {
                 } else {
                     // Load the destination before leaving the readable page.
                     // A failed load still produces the normal fail-closed error page.
-                    ReaderPagination.visible(target, pageCount, twoPageSpread)
+                    ReaderPagination.visible(target, pageCount, normalTwoPageSpread)
                         .forEach { pageRepository.load(it) }
                     val exit = (if (forward) 1f else -1f) * pageViewportWidthPx
                     animate(initial, exit, animationSpec = tween(190)) { value, _ ->
@@ -250,7 +255,9 @@ private fun Reader(pageCount: Int) {
     }
     val visible = ReaderPagination.visible(page, pageCount, twoPageSpread)
     // Never infer verse boundaries: only an opt-in paper mask over immutable pixels.
-    LaunchedEffect(page, twoPageSpread) {
+    LaunchedEffect(page) {
+        // Magnification and orientation do not mean the reader changed page.
+        // Keep the self-test reveal state unless the actual page changes.
         if (revealActive) revealStep = 0
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
