@@ -86,19 +86,22 @@ internal fun ReaderControls(
         }
         val shownPages = ReaderPagination.visible(page, pageCount, twoPageSpread)
         val shownRead = shownPages.all { it in readPages }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("الختمة: ${readPages.size} / $pageCount", modifier = Modifier.padding(top = 8.dp))
-            TextButton(onClick = onToggleRead) {
-                Text(if (shownRead) "إلغاء علامة القراءة" else "قرأت المعروض")
-            }
-            TextButton(onClick = { resetReadVisible = true }, enabled = readPages.isNotEmpty()) {
-                Text("ختمة جديدة")
-            }
-        }
+        Text(
+            text = "الختمة اليدوية: ${readPages.size} من $pageCount صفحة",
+            modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)
+        )
         LinearProgressIndicator(
             progress = { KhatmaProgressRules.fraction(readPages, pageCount) },
             modifier = Modifier.fillMaxWidth()
         )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            TextButton(onClick = onToggleRead) {
+                Text(if (shownRead) "إلغاء تعليم المعروض" else "قرأت الصفحات المعروضة")
+            }
+            TextButton(onClick = { resetReadVisible = true }, enabled = readPages.isNotEmpty()) {
+                Text("بدء ختمة جديدة")
+            }
+        }
     }
 
     if (resetReadVisible) {
