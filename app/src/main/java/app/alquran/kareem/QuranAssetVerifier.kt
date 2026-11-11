@@ -21,8 +21,9 @@ internal object QuranAssetVerifier {
 
     sealed interface Status {
         data class Approved(val pages: Int) : Status
-        /** Development only: source-hash-verified but not independently reviewed. */
-        data class Preview(val pages: Int) : Status
+        /** Original publisher artwork and all 604 PNGs verified byte-for-byte.
+         *  This is source integrity, not a claim of scholarly certification. */
+        data class SourceVerified(val pages: Int) : Status
         data class Unavailable(val reason: String) : Status
     }
 
