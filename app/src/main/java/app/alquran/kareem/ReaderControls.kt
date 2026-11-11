@@ -38,6 +38,7 @@ internal fun ReaderControls(
     readPages: Set<Int>,
     surahs: List<SurahIndexEntry>,
     sections: QuranSectionIndex,
+    pageAnchors: List<PageVerseAnchor>,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onJump: (Int) -> Unit,
@@ -48,6 +49,8 @@ internal fun ReaderControls(
 ) {
     var jumpVisible by rememberSaveable { mutableStateOf(false) }
     var indexVisible by rememberSaveable { mutableStateOf(false) }
+    var verseVisible by rememberSaveable { mutableStateOf(false) }
+    var verseReference by rememberSaveable { mutableStateOf("") }
     var sectionsVisible by rememberSaveable { mutableStateOf(false) }
     var showHizb by rememberSaveable { mutableStateOf(false) }
     var indexQuery by rememberSaveable { mutableStateOf("") }
@@ -84,6 +87,10 @@ internal fun ReaderControls(
                 onClick = { indexQuery = ""; indexVisible = true },
                 enabled = surahs.size == 114
             ) { Text("فهرس السور") }
+            TextButton(
+                onClick = { verseReference = ""; verseVisible = true },
+                enabled = surahs.size == 114 && pageAnchors.size == 604
+            ) { Text("الآية") }
             TextButton(
                 onClick = { showHizb = false; sectionsVisible = true },
                 enabled = sections.juz.size == 30 && sections.hizb.size == 60
@@ -168,6 +175,46 @@ internal fun ReaderControls(
         )
     }
 
+
+
+    if (verseVisible) {
+        val reference = VersePageRules.parseReference(verseReference, surahs)
+        val matchingPage = reference?.let {
+            VersePageRules.findPage(pageAnchors, it.first, it.second)
+        }
+        AlertDialog(
+            onDismissRequest = { verseVisible = false },
+            title = { Text("انتقل إلى آية") },
+            text = {
+                Column {
+                    Text("أدخل رقم السورة ثم الآية، مثل 2:255 أو ٢:٢٥٥")
+                    OutlinedTextField(
+                        value = verseReference,
+                        onValueChange = { verseReference = it.take(16) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("السورة:الآية") },
+                        isError = verseReference.isNotBlank() && matchingPage == null
+                    )
+                    if (matchingPage != null) {
+                        Text("مكان الآية في المصحف: صفحة $matchingPage")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        matchingPage?.let(onJump)
+                        verseVisible = false
+                    },
+                    enabled = matchingPage != null
+                ) { Text("انتقال") }
+            },
+            dismissButton = {
+                TextButton(onClick = { verseVisible = false }) { Text("إلغاء") }
+            }
+        )
+    }
 
     if (indexVisible) {
         AlertDialog(
