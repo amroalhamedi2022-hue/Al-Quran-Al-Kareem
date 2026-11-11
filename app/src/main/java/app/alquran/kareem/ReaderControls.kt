@@ -17,6 +17,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +59,10 @@ internal fun ReaderControls(
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
     onZoomReset: () -> Unit,
+    keepScreenAwake: Boolean,
+    reduceMotion: Boolean,
+    onKeepScreenAwakeChanged: (Boolean) -> Unit,
+    onReduceMotionChanged: (Boolean) -> Unit,
     onHideControls: () -> Unit
 ) {
     var toolsVisible by rememberSaveable { mutableStateOf(false) }
@@ -75,7 +80,12 @@ internal fun ReaderControls(
     // The reader must remain legible on narrow phones. No sprawling 7-button row.
     val shownPages = ReaderPagination.visible(page, pageCount, twoPageSpread)
     val shownRead = shownPages.all { it in readPages }
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 2.dp)) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .readerGlassControls()
+            .padding(horizontal = 10.dp, vertical = 3.dp)
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -155,6 +165,30 @@ internal fun ReaderControls(
                         onClick = { toolsVisible = false; resetReadVisible = true },
                         enabled = readPages.isNotEmpty()
                     ) { Text("بدء ختمة جديدة") }
+
+                    Text("إعدادات القراءة")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Text("إبقاء الشاشة مضاءة")
+                        Switch(
+                            checked = keepScreenAwake,
+                            onCheckedChange = onKeepScreenAwakeChanged
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Text("تقليل حركة التقليب")
+                        Switch(
+                            checked = reduceMotion,
+                            onCheckedChange = onReduceMotionChanged
+                        )
+                    }
 
                     Text("تكبير صفحة المصحف")
                     Text("التكبير الحالي: ${(zoomScale * 100).toInt()}٪")
