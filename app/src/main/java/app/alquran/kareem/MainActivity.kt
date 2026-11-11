@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -332,7 +333,13 @@ private fun Reader(pageCount: Int) {
         if (revealActive) revealStep = 0
     }
     ReaderAppearanceTheme(displaySettings.appearance) {
-        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Column(
+            Modifier.fillMaxSize()
+                // Theme color extends behind system bars; interactive controls
+                // and original page content stay inside actual safe insets.
+                .background(MaterialTheme.colorScheme.background)
+                .safeDrawingPadding()
+        ) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
                 Modifier.weight(1f).fillMaxWidth()
