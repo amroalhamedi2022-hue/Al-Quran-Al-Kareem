@@ -1,6 +1,6 @@
 # LIVE PROGRESS — القرآن الكريم
 
-**Last updated:** 2026-11-10 | **Canonical repository branch:** main.
+**Last updated:** 2026-11-11 | **Canonical repository branch:** main.
 **Truth labels:** DOCUMENTED / IMPLEMENTED / TESTED / APPROVED / RELEASED are distinct.
 
 ## Status by workstream
@@ -10,15 +10,15 @@
 | P0 Locked requirements and all-stage plan | ✅ DOCUMENTED | README, docs/MASTER_PLAN.md, QURAN_INTEGRITY.md, DECISIONS.md, SOURCE_PROVENANCE.md |
 | P0 Automated source and offline checks | ✅ TESTED | GitHub Actions run 42790593497, **12 of 12 Python tests PASSED**; source scan passed |
 | P1 Authentic official Hafs source archive | ✅ DOWNLOADED & BYTE VERIFIED | GitHub Actions run 42799214618: original archive SHA-256 matched publisher; exactly 604 AI artwork files staged |
-| P1 Rendered 604 PNG images and 2 independent approvals | ✅ RENDERED + TECH CHECK; ⛔ HUMAN APPROVAL PENDING | Artifact 13756210989: 604 RGBA PNGs; 604 hashes matched, pixel visibility/borders checked; NO scholarly signoffs |
+| P1 Official source and 604 PNG pages | ✅ SOURCE VERIFIED | Publisher ZIP published SHA and 604/604 PNG bytes matched in independent CI runs; external institutional certification paused, not claimed |
 | P2 Android Kotlin/Compose foundation | ✅ IMPLEMENTED and ✅ BUILT | :app:assembleDebug BUILD SUCCESSFUL in CI run 42790593497 |
 | P2 Offline permission check on produced APK | ✅ TESTED | Android aapt2 permissions inspection PASS (no declared network permissions) |
-| P2 Actual complete Quran reading | ⛔ BLOCKED by P1 | Only codepath to render verified pages; no authentic page assets available, intentionally fails closed |
-| P3 Single-ayah self-check visual reveal | ⏳ NOT IMPLEMENTED | Requires independently verified verse coordinate masks; no audio or scoring |
+| P2 Actual complete Quran reading | ✅ SOURCE-VERIFIED CODE & PREVIOUS FULL BUILD | 604-page APK artifact verified in 42985428323; production source verifier and permanent package ID merged in PR #20, signed release still pending |
+| P3 Visual self-check | 🟡 GRADUAL MASK CODE UNDER CI | 15-step opt-in conceal/reveal without mutating Quran bitmap; exact one-ayah masks still require verified coordinates |
 | P4 Realistic 3D page curl | ⏳ NOT IMPLEMENTED | After actual reviewed Quran reader |
 | P5 Liquid Glass design system | ⏳ NOT IMPLEMENTED | After source and reader |
-| P6 Index, bookmarks, search, manual wird/khatma | ⏳ NOT IMPLEMENTED | Requires approved metadata |
-| P7 Signed official Quran APK, update/device tests | ⛔ NO RELEASE | Source/604 review, hardware tests, signing not completed |
+| P6 Offline indexes, bookmarks, khatma | ✅ 114 SURAH + 30 JUZ + 60 HIZB + 604 VERSE/PAGE MAP | PR #19/#21 merged with source-cross-checked navigational metadata; bookmarks, last page, manual khatma stored locally. Full-text search / rub el hizb pending |
+| P7 Permanent signed update and device QA | ⛔ KEY/DEVICE QA PENDING | PR #20 stable package `app.alquran.kareem` v1.0.0 versionCode 100, GitHub signing workflow requires original permanent keystore secrets; hardware testing not verified |
 
 ## Verified CI evidence (2026-11-10)
 - GitHub Actions run URL: https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/actions/runs/42790593497
@@ -197,3 +197,11 @@ Every subsequent work session updates this file with exact paths, commit/run URL
 - This is a separate debug-only install `app.alquran.kareem.preview`, source-hash-verified by test. No production signature or external scholarly certification; debug-keystore signatures may differ between runner builds, so an in-place update is NOT guaranteed.
 - Reviewable QA evidence: [issue #17](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/issues/17), [installation guide](docs/ANDROID_PREVIEW_INSTALL.md).
 - Remaining implementation focus: actual-device touch/mouse and memory testing, premium paper-curl, subtle Liquid Glass, on-device accessibility, search/index only from publisher-verified mapping. No rendered or text source pixel modification is permitted.
+
+### 2026-11-11 — One permanent production app + independently verified Quran navigation
+- [PR #19](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/pull/19) merged (CI 42987556031 PASS): 114 Arabic Surah page starts cross-matched across **three** public metadata sources, plus 30 Juz/60 Hizb. Local-only navigation dialogs and fail-closed validators.
+- [PR #20](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/pull/20) merged (CI 42988596454 PASS: **121 Python tests**, Android debug compile/JVM tests, zero network permissions): permanent production app ID `app.alquran.kareem`, release `1.0.0`/`versionCode 100`; removed new preview-build workflows; publisher-archive SHA and 604 PNG hash verification now supports release builds. New `.github/workflows/build-stable-signed-update.yml` refuses to sign without **the same original private keystore and pinned cert fingerprint**. Production signer NOT established/verified, so no final signed APK exists. Previous `.preview` app cannot be updated in place to production due different package + debug certificate.
+- [PR #21](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/pull/21) merged (CI 42989190322 PASS): all 604 page first-verse anchors match **two** repositories. Offline jump to `Surah:Ayah` supports Arabic numerals and bounded verse counts, no generated Quran text.
+- [PR #22](https://github.com/amroalhamedi2022-hue/Al-Quran-Al-Kareem/pull/22) UNDER CI: opt-in temporary white masking of page pixels with **15 manual reveal steps**, never edits source PNG. This is NOT exact ayah-by-ayah mapping; 604-page coordinate maps remain needed for that feature. CI extended to compile **unsigned production flavor** as well as debug, audit package ID and network perms; do not distribute unsigned output.
+- **Owner instruction:** no more separate trial apps or backup builds; all future user-facing builds must be same production ID and same permanent signer, with strictly increasing versionCode. Do not claim a new APK is a working update until its certificate is confirmed stable.
+- **Current blockers to final signed APK:** one securely established private Android keystore in Actions secrets, signed-release workflow execution, real phone/tablet QA, realistic page-curl and Liquid Glass perfection. External institutional certification is paused by request; don't claim formal approval or mathematically perfect conversion.
