@@ -285,7 +285,8 @@ private fun Reader(pageCount: Int) {
         // Keep the self-test reveal state unless the actual page changes.
         if (revealActive) revealStep = 0
     }
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+    ReaderAppearanceTheme(displaySettings.appearance) {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Row(
                 Modifier.weight(1f).fillMaxWidth()
@@ -496,6 +497,12 @@ private fun Reader(pageCount: Int) {
             onZoomReset = { setZoom(ReaderZoomRules.MIN_ZOOM) },
             keepScreenAwake = displaySettings.keepScreenAwake,
             reduceMotion = displaySettings.reduceMotion,
+            appearance = displaySettings.appearance,
+            onAppearanceChanged = { mode ->
+                val updated = displaySettings.copy(appearance = mode)
+                displaySettingsStore.save(updated)
+                displaySettings = updated
+            },
             onKeepScreenAwakeChanged = { enabled ->
                 val updated = displaySettings.copy(keepScreenAwake = enabled)
                 displaySettingsStore.save(updated)
@@ -510,6 +517,7 @@ private fun Reader(pageCount: Int) {
             onHideControls = { showControls = false }
                 )
             }
+        }
         }
     }
 }
