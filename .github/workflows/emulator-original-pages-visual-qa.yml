@@ -5,6 +5,10 @@ on:
     paths:
       - '.github/workflows/emulator-original-pages-visual-qa.yml'
       - 'scripts/qa/emulator_visual_smoke.py'
+  pull_request:
+    paths:
+      - '.github/workflows/emulator-original-pages-visual-qa.yml'
+      - 'scripts/qa/emulator_visual_smoke.py'
   workflow_dispatch:
 permissions:
   contents: read
