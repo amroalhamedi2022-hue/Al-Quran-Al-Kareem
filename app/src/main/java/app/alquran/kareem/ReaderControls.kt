@@ -63,6 +63,8 @@ internal fun ReaderControls(
     onZoomReset: () -> Unit,
     keepScreenAwake: Boolean,
     reduceMotion: Boolean,
+    appearance: ReaderThemeMode,
+    onAppearanceChanged: (ReaderThemeMode) -> Unit,
     onKeepScreenAwakeChanged: (Boolean) -> Unit,
     onReduceMotionChanged: (Boolean) -> Unit,
     onHideControls: () -> Unit
@@ -85,7 +87,7 @@ internal fun ReaderControls(
     Column(
         modifier = Modifier.fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 6.dp)
-            .readerGlassControls()
+            .readerGlassControls(appearance)
             .padding(horizontal = 10.dp, vertical = 3.dp)
     ) {
         Row(
@@ -203,6 +205,22 @@ internal fun ReaderControls(
                         }) { Text("افتح أول صفحة في الورد") }
                     }
                     Text("لا تُعلَّم الصفحات مقروءة إلا بضغطك على زر القراءة.")
+
+                    Text("مظهر أدوات القراءة")
+                    ReaderThemeMode.entries.forEach { option ->
+                        TextButton(
+                            onClick = { onAppearanceChanged(option) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = (if (appearance == option) "✓ " else "○ ") +
+                                    option.title,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Start
+                            )
+                        }
+                    }
+                    Text("تغيير لون الأدوات والخلفية فقط؛ تبقى صورة المصحف كما هي.")
 
                     Text("إعدادات القراءة")
                     Row(

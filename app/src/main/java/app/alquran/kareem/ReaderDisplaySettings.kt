@@ -5,7 +5,8 @@ import android.content.Context
 /** Entirely local reading choices. No network, login or analytics. */
 internal data class ReaderDisplaySettings(
     val keepScreenAwake: Boolean = false,
-    val reduceMotion: Boolean = false
+    val reduceMotion: Boolean = false,
+    val appearance: ReaderThemeMode = ReaderThemeMode.PEARL
 )
 
 internal class ReaderDisplaySettingsStore(context: Context) {
@@ -15,13 +16,17 @@ internal class ReaderDisplaySettingsStore(context: Context) {
 
     fun read(): ReaderDisplaySettings = ReaderDisplaySettings(
         keepScreenAwake = prefs.getBoolean("keep_screen_awake", false),
-        reduceMotion = prefs.getBoolean("reduce_motion", false)
+        reduceMotion = prefs.getBoolean("reduce_motion", false),
+        appearance = ReaderThemeMode.fromStorage(
+            prefs.getString("reading_appearance", ReaderThemeMode.PEARL.storageId)
+        )
     )
 
     fun save(settings: ReaderDisplaySettings) {
         prefs.edit()
             .putBoolean("keep_screen_awake", settings.keepScreenAwake)
             .putBoolean("reduce_motion", settings.reduceMotion)
+            .putString("reading_appearance", settings.appearance.storageId)
             .apply()
     }
 }
