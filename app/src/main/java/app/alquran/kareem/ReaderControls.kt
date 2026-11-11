@@ -45,6 +45,12 @@ internal fun ReaderControls(
     onToggleBookmark: () -> Unit,
     onToggleRead: () -> Unit,
     onResetRead: () -> Unit,
+    revealActive: Boolean,
+    revealStep: Int,
+    onToggleReveal: () -> Unit,
+    onRevealMore: () -> Unit,
+    onRevealLess: () -> Unit,
+    onRevealAll: () -> Unit,
     onHideControls: () -> Unit
 ) {
     var jumpVisible by rememberSaveable { mutableStateOf(false) }
@@ -115,6 +121,30 @@ internal fun ReaderControls(
             progress = { KhatmaProgressRules.fraction(readPages, pageCount) },
             modifier = Modifier.fillMaxWidth()
         )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            TextButton(onClick = onToggleReveal) {
+                Text(if (revealActive) "إنهاء التسميع البصري" else "التسميع البصري")
+            }
+            if (revealActive) {
+                TextButton(onClick = onRevealLess, enabled = revealStep > 0) {
+                    Text("إخفاء خطوة")
+                }
+                TextButton(
+                    onClick = onRevealMore,
+                    enabled = revealStep < VisualRevealRules.REVEAL_STEPS
+                ) { Text("كشف خطوة") }
+                TextButton(
+                    onClick = onRevealAll,
+                    enabled = revealStep < VisualRevealRules.REVEAL_STEPS
+                ) { Text("كشف الكل") }
+            }
+        }
+        if (revealActive) {
+            Text(
+                "كشف الصفحة تدريجيًا: $revealStep من 15. هذه خطوات بصرية لا تمثل حدود الآيات."
+            )
+        }
+
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             TextButton(onClick = onToggleRead) {
                 Text(if (shownRead) "إلغاء تعليم المعروض" else "قرأت الصفحات المعروضة")
