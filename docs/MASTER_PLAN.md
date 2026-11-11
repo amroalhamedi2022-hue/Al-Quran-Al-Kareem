@@ -57,7 +57,7 @@ Order is by dependency, not visual appeal. Any blocker in textual authenticity s
 
 ### P6 — Essential reading functions
 - ✅ Verified offline 114-surah, 30-juz, 60-hizb, **240 quarter-Hizb** and 604-page first-verse indexes, cross-checked against independent metadata. Full-word verse text search remains outstanding and must use licensed independently verified text.
-- ✅ Local bookmarks, last position, manual khatma, screen-awake/reduce-motion settings, double-tap zoom, mouse and keyboard support. Dedicated daily wird planner and physical UI QA are still pending.
+- ✅ Local bookmarks, last position, manual khatma, **manual daily Wird target (1–30 pages) with next unread pages and estimated completion**, screen-awake/reduce-motion settings, double-tap zoom, mouse and keyboard support. Real Android phone/tablet UI QA is still pending.
 - No network sync, cloud storage, accounts, ads or analytics.
 **Exit G6:** correctness on reference edition, app lifecycle tests and migration tests.
 
