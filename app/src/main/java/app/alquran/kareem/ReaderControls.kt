@@ -77,10 +77,12 @@ internal fun ReaderControls(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
         ) {
+            // In Arabic RTL layout, the FIRST child is at the right edge.
+            // Keep NEXT on the right to match swiping right to advance.
             TextButton(
-                onClick = onPrevious,
-                enabled = ReaderPagination.hasPrevious(page, pageCount, twoPageSpread)
-            ) { Text("السابق") }
+                onClick = onNext,
+                enabled = ReaderPagination.hasNext(page, pageCount, twoPageSpread)
+            ) { Text("التالي") }
             Text(
                 text = if (shownPages.size == 2) {
                     "${shownPages.last()}–${shownPages.first()} / $pageCount"
@@ -88,9 +90,9 @@ internal fun ReaderControls(
                 textAlign = TextAlign.Center
             )
             TextButton(
-                onClick = onNext,
-                enabled = ReaderPagination.hasNext(page, pageCount, twoPageSpread)
-            ) { Text("التالي") }
+                onClick = onPrevious,
+                enabled = ReaderPagination.hasPrevious(page, pageCount, twoPageSpread)
+            ) { Text("السابق") }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
