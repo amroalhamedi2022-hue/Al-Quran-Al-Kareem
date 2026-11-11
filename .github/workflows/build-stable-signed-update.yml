@@ -63,6 +63,28 @@ jobs:
             --destination app/src/main/assets/quran
           test "$(find app/src/main/assets/quran -maxdepth 1 -name '*.png' | wc -l)" -eq 604
           python scripts/verify_offline.py --manifest app/src/main/AndroidManifest.xml --sources app
+      # This step occurs BEFORE Gradle: only independently reviewed, pinned
+      # publisher-identical artwork may ever enter a signed Android build.
+      - name: Reject unreviewed Quran and promote exact approved publisher pages BEFORE build
+        shell: bash
+        run: |
+          set -euo pipefail
+          approved=release-approval/approved_manifest.json
+          if [ ! -f "$approved" ]; then
+            echo "::error::No independently approved 604-page manifest; cannot build/sign unreviewed Quran artwork."
+            exit 1
+          fi
+          python scripts/verify_approval_seal.py \
+            --kotlin app/src/main/java/app/alquran/kareem/QuranAssetVerifier.kt \
+            --manifest "$approved"
+          python scripts/promote_approved_quran_pack.py \
+            --staged app/src/main/assets/quran \
+            --approved-manifest "$approved" \
+            --pinned-kotlin app/src/main/java/app/alquran/kareem/QuranAssetVerifier.kt
+          python scripts/verify_quran_pack.py \
+            --pages app/src/main/assets/quran \
+            --manifest app/src/main/assets/quran/approved_manifest.json
+          cmp -- "$approved" app/src/main/assets/quran/approved_manifest.json
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -77,27 +99,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
-      - name: Test and assemble stable production package
+      - name: Test and assemble ONLY independently approved production Quran package
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleRelease
-      # The renderer output is explicitly UNAPPROVED_RENDER_ONLY.
-      # A publisher checksum and 604 page hashes do NOT prove Quran text review.
-      # Until an independently reviewed 604-page manifest is installed and
-      # pinned, the release must stop BEFORE any signed APK can be created.
-      - name: Block signed Quran release until independent 604-page content approval
-        shell: bash
-        run: |
-          set -euo pipefail
-          approved=app/src/main/assets/quran/approved_manifest.json
-          if [ ! -f "$approved" ]; then
-            echo "::error::No independently approved 604-page manifest; publisher-byte verification alone is insufficient for a signed Quran release."
-            exit 1
-          fi
-          python scripts/verify_approval_seal.py \
-            --kotlin app/src/main/java/app/alquran/kareem/QuranAssetVerifier.kt \
-            --manifest "$approved"
-          python scripts/verify_quran_pack.py \
-            --pages app/src/main/assets/quran \
-            --manifest "$approved"
       - name: Sign with unchanged lifetime key, align and verify certificate identity
         shell: bash
         env:
@@ -139,13 +142,13 @@ jobs:
             echo "::error::Network permission in offline Quran APK"
             exit 1
           fi
-          python scripts/verify_publisher_release_apk.py \
+          python scripts/verify_release_apk.py \
             --apk "$output" \
-            --source app/src/main/assets/quran \
-            | tee release-output/publisher-source-byte-proof.json
+            --approved-manifest release-approval/approved_manifest.json \
+            | tee release-output/quran-approved-byte-proof.txt
           echo "$actual" > release-output/release-signing-cert-sha256.txt
           sha256sum "$output" > release-output/Al-Quran-Al-Kareem-v1.0.0.apk.sha256
-          echo 'Original source is publisher-authenticated by archive SHA and 604 PNG hashes; no separate institutional certificate is claimed.' > release-output/SOURCE_NOTE.txt
+          echo 'Publisher archive, external approval manifest pin, and all 604 embedded PNG bytes were checked. Automated checks are not independent scholarly certification.' > release-output/SOURCE_NOTE.txt
       - name: Upload only signed, verified and installable update
         uses: actions/upload-artifact@v4
         with:
