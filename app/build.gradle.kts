@@ -10,14 +10,13 @@ android {
         applicationId = "app.alquran.kareem"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0-dev"
+        // Stable release identity: all future signed updates increment versionCode.
+        versionCode = 100
+        versionName = "1.0.0"
     }
     buildTypes {
         debug {
-            // Separately installable development reader; never upgrades a final signed app.
-            applicationIdSuffix = ".preview"
-            versionNameSuffix = "-source-preview"
+            // Internal CI build only; do not distribute debug-signed APKs.
         }
         release {
             isMinifyEnabled = false
