@@ -177,13 +177,13 @@ private fun Reader(pageCount: Int) {
     var pageViewportWidthPx by remember { mutableFloatStateOf(1f) }
     var isTurning by remember { mutableStateOf(false) }
     var turnJob by remember { mutableStateOf<Job?>(null) }
-    var turnGeneration by remember { mutableIntStateOf(0) }
+    val turnEpoch = remember { ReaderTransitionEpoch() }
     val turnScope = rememberCoroutineScope()
 
     // An index jump must NEVER be silently ignored while a sheet is moving.
     // Cancel old work and invalidate its completion callback before navigating.
     fun interruptTurn() {
-        turnGeneration += 1
+        turnEpoch.invalidate()
         turnJob?.cancel()
         turnJob = null
         isTurning = false
@@ -223,7 +223,7 @@ private fun Reader(pageCount: Int) {
             return
         }
         val initial = turnOffsetPx
-        val currentGeneration = ++turnGeneration
+        val currentGeneration = turnEpoch.begin()
         isTurning = true
         turnJob = turnScope.launch {
             try {
@@ -251,7 +251,7 @@ private fun Reader(pageCount: Int) {
                 }
             } finally {
                 // A cancelled old animation cannot reset a newer direct jump.
-                if (turnGeneration == currentGeneration) {
+                if (turnEpoch.isCurrent(currentGeneration)) {
                     turnOffsetPx = 0f
                     isTurning = false
                     turnJob = null
@@ -266,7 +266,7 @@ private fun Reader(pageCount: Int) {
             turnOffsetPx = 0f
             return
         }
-        val currentGeneration = ++turnGeneration
+        val currentGeneration = turnEpoch.begin()
         isTurning = true
         turnJob = turnScope.launch {
             try {
@@ -274,7 +274,7 @@ private fun Reader(pageCount: Int) {
                     turnOffsetPx = value
                 }
             } finally {
-                if (turnGeneration == currentGeneration) {
+                if (turnEpoch.isCurrent(currentGeneration)) {
                     turnOffsetPx = 0f
                     isTurning = false
                     turnJob = null
