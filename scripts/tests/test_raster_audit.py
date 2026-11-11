@@ -55,6 +55,12 @@ class RasterAuditTests(unittest.TestCase):
         with self.assertRaisesRegex(RasterAuditError, "missing"):
             self.audit()
 
+    def test_known_review_sidecars_do_not_block_full_png_audit(self):
+        (self.root / "REVIEW_OFFLINE_UNAPPROVED.html").write_text("local review only")
+        (self.root / "TECHNICAL_AUDIT_ONLY.json").write_text("{}")
+        (self.root / "REVIEW_LEDGER_604_UNAPPROVED.csv").write_text("test only")
+        self.assertEqual(self.audit()["pages_examined"], 3)
+
     def test_extra_file_rejected(self):
         (self.root / "extra.txt").write_text("a")
         with self.assertRaisesRegex(RasterAuditError, "extra"):
