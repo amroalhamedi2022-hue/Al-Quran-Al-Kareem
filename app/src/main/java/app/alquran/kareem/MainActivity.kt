@@ -340,6 +340,11 @@ private fun Reader(pageCount: Int) {
             ?.let { pageRepository.load(it) }
     }
     val visible = ReaderPagination.visible(page, pageCount, twoPageSpread)
+    // Zoom shows one page, but turn boundaries still follow the physical spread.
+    val navigationTwoPageSpread = ReaderViewportRules.twoPageSpread(
+        configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
+        configuration.screenWidthDp
+    )
     // Never infer verse boundaries: only an opt-in paper mask over immutable pixels.
     LaunchedEffect(page) {
         // Magnification and orientation do not mean the reader changed page.
@@ -375,7 +380,7 @@ private fun Reader(pageCount: Int) {
                             visible, pageCount, bookmarks, zoomScale
                         )
                         customActions = buildList {
-                            if (ReaderPagination.hasNext(page, pageCount, twoPageSpread)) {
+                            if (ReaderPagination.hasNext(page, pageCount, navigationTwoPageSpread)) {
                                 add(CustomAccessibilityAction("الانتقال إلى الصفحة التالية") {
                                     if (isTurning) false else {
                                         requestPageTurn(true)
@@ -383,7 +388,7 @@ private fun Reader(pageCount: Int) {
                                     }
                                 })
                             }
-                            if (ReaderPagination.hasPrevious(page, pageCount, twoPageSpread)) {
+                            if (ReaderPagination.hasPrevious(page, pageCount, navigationTwoPageSpread)) {
                                 add(CustomAccessibilityAction("الانتقال إلى الصفحة السابقة") {
                                     if (isTurning) false else {
                                         requestPageTurn(false)
@@ -625,10 +630,7 @@ private fun Reader(pageCount: Int) {
                 page = page,
             pageCount = pageCount,
             twoPageSpread = twoPageSpread,
-            navigationTwoPageSpread = ReaderViewportRules.twoPageSpread(
-                configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
-                configuration.screenWidthDp
-            ),
+            navigationTwoPageSpread = navigationTwoPageSpread,
             bookmarks = bookmarks,
             readPages = readPages,
             dailyWirdTarget = dailyWirdTarget,
