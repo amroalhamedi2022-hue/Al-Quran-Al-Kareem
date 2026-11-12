@@ -161,6 +161,7 @@ internal fun ReaderControls(
                         bookmarksVisible = true
                     }) { Text("العلامات المرجعية (${bookmarks.size})") }
                     Text("اضغط مطولًا على أي صفحة لحفظ علامة لها أو إزالتها؛ حتى في العرض المزدوج.")
+                    Text("لوحة المفاتيح: الأسهم يمين/يسار للتقليب، Home للبداية، End للنهاية، + و− للتكبير، B للعلامة، وSpace لإظهار الأدوات أو إخفائها. تتوفر إجراءات القراءة أيضًا عبر TalkBack.")
 
                     Text("الختمة — ${readPages.size} من $pageCount صفحة")
                     TextButton(onClick = onToggleRead) {

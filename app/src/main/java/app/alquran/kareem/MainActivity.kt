@@ -4,6 +4,7 @@ import android.content.ComponentCallbacks2
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.view.KeyEvent as AndroidKeyEvent
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -70,6 +71,10 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 
@@ -303,6 +308,14 @@ private fun Reader(pageCount: Int) {
         }
     }
 
+    // One bookmark operation for toolbar, physical keyboard and TalkBack.
+    // Only a page number is saved; source page artwork is never changed.
+    fun toggleCurrentBookmark() {
+        val updated = ReaderNavigationRules.toggleBookmark(bookmarks, page, pageCount)
+        bookmarkStore.save(updated, pageCount)
+        bookmarks = updated
+    }
+
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(focusRequester) { focusRequester.requestFocus() }
     LaunchedEffect(page, pageCount) {
@@ -326,6 +339,11 @@ private fun Reader(pageCount: Int) {
             ?.let { pageRepository.load(it) }
     }
     val visible = ReaderPagination.visible(page, pageCount, twoPageSpread)
+    // Zoom shows one page, but turn boundaries still follow the physical spread.
+    val navigationTwoPageSpread = ReaderViewportRules.twoPageSpread(
+        configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
+        configuration.screenWidthDp
+    )
     // Never infer verse boundaries: only an opt-in paper mask over immutable pixels.
     LaunchedEffect(page) {
         // Magnification and orientation do not mean the reader changed page.
@@ -354,6 +372,61 @@ private fun Reader(pageCount: Int) {
                         zoomPanX = safe.x
                         zoomPanY = safe.y
                     }
+                    .semantics {
+                        // Announce VERIFIED page numbers only. Never synthesize
+                        // or read unverified Quran text to assistive services.
+                        stateDescription = ReaderAccessibilityRules.status(
+                            visible, pageCount, bookmarks, zoomScale
+                        )
+                        customActions = buildList {
+                            if (ReaderPagination.hasNext(page, pageCount, navigationTwoPageSpread)) {
+                                add(CustomAccessibilityAction("الانتقال إلى الصفحة التالية") {
+                                    if (isTurning) false else {
+                                        requestPageTurn(true)
+                                        true
+                                    }
+                                })
+                            }
+                            if (ReaderPagination.hasPrevious(page, pageCount, navigationTwoPageSpread)) {
+                                add(CustomAccessibilityAction("الانتقال إلى الصفحة السابقة") {
+                                    if (isTurning) false else {
+                                        requestPageTurn(false)
+                                        true
+                                    }
+                                })
+                            }
+                            add(CustomAccessibilityAction(
+                                if (page in bookmarks) "إزالة علامة الصفحة الحالية"
+                                else "حفظ علامة للصفحة الحالية"
+                            ) {
+                                if (isTurning) false else {
+                                    toggleCurrentBookmark()
+                                    true
+                                }
+                            })
+                            if (zoomScale < ReaderZoomRules.MAX_ZOOM) {
+                                add(CustomAccessibilityAction("تكبير الصفحة") {
+                                    interruptTurn()
+                                    setZoom(ReaderZoomRules.zoomIn(zoomScale))
+                                    true
+                                })
+                            }
+                            if (zoomScale > ReaderZoomRules.MIN_ZOOM) {
+                                add(CustomAccessibilityAction("تصغير الصفحة") {
+                                    interruptTurn()
+                                    setZoom(ReaderZoomRules.zoomOut(zoomScale))
+                                    true
+                                })
+                            }
+                            add(CustomAccessibilityAction(
+                                if (showControls) "إخفاء أدوات القراءة"
+                                else "إظهار أدوات القراءة"
+                            ) {
+                                showControls = !showControls
+                                true
+                            })
+                        }
+                    }
                     .focusRequester(focusRequester)
                     .onPreviewKeyEvent { event ->
                         if (event.type != KeyEventType.KeyUp) {
@@ -372,7 +445,42 @@ private fun Reader(pageCount: Int) {
                                     showControls = true
                                     true
                                 }
-                                else -> false
+                                else -> when (event.nativeKeyEvent.keyCode) {
+                                    AndroidKeyEvent.KEYCODE_MOVE_HOME -> {
+                                        interruptTurn()
+                                        setZoom(ReaderZoomRules.MIN_ZOOM)
+                                        page = 1
+                                        true
+                                    }
+                                    AndroidKeyEvent.KEYCODE_MOVE_END -> {
+                                        interruptTurn()
+                                        setZoom(ReaderZoomRules.MIN_ZOOM)
+                                        page = pageCount
+                                        true
+                                    }
+                                    AndroidKeyEvent.KEYCODE_PLUS,
+                                    AndroidKeyEvent.KEYCODE_EQUALS,
+                                    AndroidKeyEvent.KEYCODE_NUMPAD_ADD -> {
+                                        interruptTurn()
+                                        setZoom(ReaderZoomRules.zoomIn(zoomScale))
+                                        true
+                                    }
+                                    AndroidKeyEvent.KEYCODE_MINUS,
+                                    AndroidKeyEvent.KEYCODE_NUMPAD_SUBTRACT -> {
+                                        interruptTurn()
+                                        setZoom(ReaderZoomRules.zoomOut(zoomScale))
+                                        true
+                                    }
+                                    AndroidKeyEvent.KEYCODE_B -> {
+                                        if (!isTurning) toggleCurrentBookmark()
+                                        true
+                                    }
+                                    AndroidKeyEvent.KEYCODE_SPACE -> {
+                                        showControls = !showControls
+                                        true
+                                    }
+                                    else -> false
+                                }
                             }
                         }
                     }
@@ -521,10 +629,7 @@ private fun Reader(pageCount: Int) {
                 page = page,
             pageCount = pageCount,
             twoPageSpread = twoPageSpread,
-            navigationTwoPageSpread = ReaderViewportRules.twoPageSpread(
-                configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
-                configuration.screenWidthDp
-            ),
+            navigationTwoPageSpread = navigationTwoPageSpread,
             bookmarks = bookmarks,
             readPages = readPages,
             dailyWirdTarget = dailyWirdTarget,
@@ -543,11 +648,7 @@ private fun Reader(pageCount: Int) {
                 setZoom(ReaderZoomRules.MIN_ZOOM)
                 page = ReaderPagination.clamp(requested, pageCount)
             },
-                onToggleBookmark = {
-                    val updated = ReaderNavigationRules.toggleBookmark(bookmarks, page, pageCount)
-                    bookmarkStore.save(updated, pageCount)
-                    bookmarks = updated
-                },
+                onToggleBookmark = { toggleCurrentBookmark() },
                 onToggleRead = {
                 val updated = KhatmaProgressRules.toggleVisible(readPages, visible, pageCount)
                 khatmaStore.save(updated, pageCount)
