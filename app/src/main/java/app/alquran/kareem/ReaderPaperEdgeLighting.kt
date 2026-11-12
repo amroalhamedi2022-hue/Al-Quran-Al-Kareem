@@ -15,20 +15,23 @@ import androidx.compose.ui.graphics.Color
  * the ContentScale.Fit rectangle of the untouched source image.
  */
 internal fun Modifier.readerPaperEdgeLighting(
-    dragPixels: Float,
-    viewportWidthPixels: Float,
-    activeSheet: Boolean
+    dragPixels: () -> Float,
+    viewportWidthPixels: () -> Float,
+    activeSheet: (Float) -> Boolean
 ): Modifier = drawWithContent {
     drawContent()
-    if (!activeSheet) return@drawWithContent
-    val light = ReaderPaperLightingRules.light(dragPixels, viewportWidthPixels)
+    // Read movement in the draw phase. Finger tracking must not recompose
+    // the entire Quran reader on every frame, particularly at 120 Hz.
+    val delta = dragPixels()
+    if (!activeSheet(delta)) return@drawWithContent
+    val light = ReaderPaperLightingRules.light(delta, viewportWidthPixels())
     if (light.shadowAlpha <= 0f) return@drawWithContent
 
     val bounds = ReaderPaperLightingRules.fittedBounds(size.width, size.height)
         ?: return@drawWithContent
     val band = bounds.width * light.bandFraction
     if (band <= 0f) return@drawWithContent
-    val rightHinge = dragPixels > 0f
+    val rightHinge = delta > 0f
     val start = if (rightHinge) bounds.left + bounds.width - band else bounds.left
     val colors = if (rightHinge) {
         listOf(
