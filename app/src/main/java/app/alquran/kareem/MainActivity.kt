@@ -618,6 +618,16 @@ private fun Reader(pageCount: Int) {
                                     shadowElevation = 10.dp.toPx() * pose.elevationFraction
                                 }
                             }
+                                .readerPaperEdgeLighting(
+                                    dragPixels = { turnOffsetPx },
+                                    viewportWidthPixels = { pageViewportWidthPx },
+                                    activeSheet = { drag ->
+                                        ReaderMotionRules.animateTurn(displaySettings.reduceMotion) &&
+                                            ReaderPaperTurnRules.shouldTiltPage(
+                                                index, twoPageSpread, drag
+                                            )
+                                    }
+                                )
                         )
                     }
                 }
