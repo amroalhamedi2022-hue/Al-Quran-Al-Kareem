@@ -34,10 +34,10 @@ class ReaderPaperLightingRulesTest {
 
     @Test fun portraitPaintIsCenteredAndDoesNotExtendOutsidePaper() {
         val p = ReaderPaperLightingRules.fittedBounds(1080f, 2400f)!!
-        assertTrue(p.left > 0f)
-        assertEquals(0f, p.top, 0.001f)
-        assertEquals(1080f, p.width + 2f * p.left, 0.001f)
-        assertTrue(p.height <= 2400f)
+        assertEquals(0f, p.left, 0.001f)
+        assertTrue(p.top > 0f)
+        assertEquals(1080f, p.width, 0.001f)
+        assertEquals(2400f, p.height + 2f * p.top, 0.001f)
     }
 
     @Test fun tabletPageIsCenteredInItsHalfOfLandscape() {
