@@ -605,16 +605,6 @@ private fun Reader(pageCount: Int) {
                                     translationX = zoomPanX
                                     translationY = zoomPanY
                                 }
-                                .readerPaperEdgeLighting(
-                                    dragPixels = { turnOffsetPx },
-                                    viewportWidthPixels = { pageViewportWidthPx },
-                                    activeSheet = { drag ->
-                                        ReaderMotionRules.animateTurn(displaySettings.reduceMotion) &&
-                                            ReaderPaperTurnRules.shouldTiltPage(
-                                                index, twoPageSpread, drag
-                                            )
-                                    }
-                                )
                                 .graphicsLayer {
                                 val pose = ReaderPaperTurnRules.pose(turnOffsetPx, pageViewportWidthPx)
                                 if (ReaderMotionRules.animateTurn(displaySettings.reduceMotion) &&
@@ -628,6 +618,16 @@ private fun Reader(pageCount: Int) {
                                     shadowElevation = 10.dp.toPx() * pose.elevationFraction
                                 }
                             }
+                                .readerPaperEdgeLighting(
+                                    dragPixels = { turnOffsetPx },
+                                    viewportWidthPixels = { pageViewportWidthPx },
+                                    activeSheet = { drag ->
+                                        ReaderMotionRules.animateTurn(displaySettings.reduceMotion) &&
+                                            ReaderPaperTurnRules.shouldTiltPage(
+                                                index, twoPageSpread, drag
+                                            )
+                                    }
+                                )
                         )
                     }
                 }
